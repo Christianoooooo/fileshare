@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 import secrets
+import sqlite3
 import typing as t
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import Lock
 from urllib.parse import urljoin, urlparse
 
 from flask import (
@@ -23,10 +25,6 @@ from flask import (
 )
 from functools import wraps
 
-from pymongo import ASCENDING, DESCENDING, MongoClient, ReturnDocument
-from pymongo.collection import Collection
-from pymongo.database import Database
-from pymongo.errors import ConfigurationError
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -136,12 +134,10 @@ class FileRecord:
 
 
 class FileStore:
-    def __init__(self, collection: Collection, capacity: int = DEFAULT_CAPACITY) -> None:
-        self.collection = collection
+    def __init__(self, connection: sqlite3.Connection, capacity: int = DEFAULT_CAPACITY) -> None:
+        self.conn = connection
         self.capacity = capacity
-        self.collection.create_index([("uploaded_at", DESCENDING)])
-        self.collection.create_index([("owner_id", ASCENDING), ("uploaded_at", DESCENDING)])
-        self.collection.create_index("share_token", unique=True, sparse=True)
+        self._lock = Lock()
 
     def _generate_id(self) -> str:
         return secrets.token_hex(8)
@@ -157,7 +153,7 @@ class FileStore:
         file_id = self._generate_id()
         suffix = Path(original_name).suffix
         stored_name = f"{file_id}{suffix}"
-        uploaded_at = datetime.now(timezone.utc)
+        uploaded_at = datetime.now(timezone.utc).isoformat()
         document = {
             "_id": file_id,
             "original_name": original_name,
@@ -168,85 +164,133 @@ class FileStore:
             "owner_id": owner.id,
             "owner_username": owner.username,
         }
-        self.collection.insert_one(document)
+        with self._lock, self.conn:
+            self.conn.execute(
+                """
+                INSERT INTO files (
+                    _id,
+                    original_name,
+                    stored_name,
+                    size,
+                    content_type,
+                    uploaded_at,
+                    owner_id,
+                    owner_username
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    document["_id"],
+                    document["original_name"],
+                    document["stored_name"],
+                    document["size"],
+                    document["content_type"],
+                    document["uploaded_at"],
+                    document["owner_id"],
+                    document["owner_username"],
+                ),
+            )
         return FileRecord.from_document(document)
 
     def list_files(self, owner_id: str | None = None) -> list[FileRecord]:
-        query: dict[str, t.Any] = {}
         if owner_id:
-            query["owner_id"] = owner_id
-        cursor = self.collection.find(query).sort("uploaded_at", DESCENDING)
-        return [FileRecord.from_document(document) for document in cursor]
+            cursor = self.conn.execute(
+                "SELECT * FROM files WHERE owner_id = ? ORDER BY uploaded_at DESC",
+                (owner_id,),
+            )
+        else:
+            cursor = self.conn.execute(
+                "SELECT * FROM files ORDER BY uploaded_at DESC"
+            )
+        return [FileRecord.from_document(dict(row)) for row in cursor.fetchall()]
 
     def total_size(self, owner_id: str | None = None) -> int:
-        query: dict[str, t.Any] = {}
         if owner_id:
-            query["owner_id"] = owner_id
-        total = 0
-        for document in self.collection.find(query, {"size": 1}):
-            total += int(document.get("size", 0))
-        return total
+            cursor = self.conn.execute(
+                "SELECT COALESCE(SUM(size), 0) FROM files WHERE owner_id = ?",
+                (owner_id,),
+            )
+        else:
+            cursor = self.conn.execute("SELECT COALESCE(SUM(size), 0) FROM files")
+        total = cursor.fetchone()[0] or 0
+        return int(total)
 
     def remaining_capacity(self) -> int:
         return max(self.capacity - self.total_size(), 0)
 
     def get(self, file_id: str) -> FileRecord:
-        document = self.collection.find_one({"_id": file_id})
-        if not document:
+        cursor = self.conn.execute(
+            "SELECT * FROM files WHERE _id = ?",
+            (file_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
             raise KeyError(file_id)
-        return FileRecord.from_document(document)
+        return FileRecord.from_document(dict(row))
 
     def update_name(self, file_id: str, new_name: str) -> FileRecord:
-        document = self.collection.find_one_and_update(
-            {"_id": file_id},
-            {"$set": {"original_name": new_name}},
-            return_document=ReturnDocument.AFTER,
-        )
-        if not document:
-            raise KeyError(file_id)
-        return FileRecord.from_document(document)
+        with self._lock, self.conn:
+            cursor = self.conn.execute(
+                "UPDATE files SET original_name = ? WHERE _id = ?",
+                (new_name, file_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(file_id)
+        return self.get(file_id)
 
     def delete(self, file_id: str) -> FileRecord:
-        document = self.collection.find_one_and_delete({"_id": file_id})
-        if not document:
-            raise KeyError(file_id)
-        return FileRecord.from_document(document)
+        record = self.get(file_id)
+        with self._lock, self.conn:
+            self.conn.execute(
+                "DELETE FROM files WHERE _id = ?",
+                (file_id,),
+            )
+        return record
 
     def ensure_share_token(self, file_id: str) -> FileRecord:
         record = self.get(file_id)
         if record.share_token:
             return record
-        token = secrets.token_urlsafe(12)
-        document = self.collection.find_one_and_update(
-            {"_id": file_id},
-            {"$set": {"share_token": token}},
-            return_document=ReturnDocument.AFTER,
-        )
-        if not document:
-            raise KeyError(file_id)
-        return FileRecord.from_document(document)
+        for _ in range(5):
+            token = secrets.token_urlsafe(12)
+            try:
+                with self._lock, self.conn:
+                    cursor = self.conn.execute(
+                        "UPDATE files SET share_token = ? WHERE _id = ?",
+                        (token, file_id),
+                    )
+                    if cursor.rowcount == 0:
+                        raise KeyError(file_id)
+                return self.get(file_id)
+            except sqlite3.IntegrityError:
+                continue
+        raise RuntimeError("Konnte keinen eindeutigen Freigabelink erzeugen.")
 
     def remove_share_token(self, file_id: str) -> FileRecord:
-        document = self.collection.find_one_and_update(
-            {"_id": file_id},
-            {"$unset": {"share_token": ""}},
-            return_document=ReturnDocument.AFTER,
-        )
-        if not document:
-            raise KeyError(file_id)
-        return FileRecord.from_document(document)
+        with self._lock, self.conn:
+            cursor = self.conn.execute(
+                "UPDATE files SET share_token = NULL WHERE _id = ?",
+                (file_id,),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(file_id)
+        return self.get(file_id)
 
     def find_by_token(self, token: str) -> FileRecord:
-        document = self.collection.find_one({"share_token": token})
-        if not document:
+        cursor = self.conn.execute(
+            "SELECT * FROM files WHERE share_token = ?",
+            (token,),
+        )
+        row = cursor.fetchone()
+        if row is None:
             raise KeyError(token)
-        return FileRecord.from_document(document)
+        return FileRecord.from_document(dict(row))
 
 
 class UserStore:
-    def __init__(self, collection: Collection) -> None:
-        self.collection = collection
-        self.collection.create_index("username_lower", unique=True)
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.conn = connection
+        self._lock = Lock()
 
     def _from_document(self, document: dict[str, t.Any]) -> User:
         created_at = document.get("created_at")
@@ -263,7 +307,8 @@ class UserStore:
         )
 
     def has_users(self) -> bool:
-        return self.collection.count_documents({}) > 0
+        cursor = self.conn.execute("SELECT 1 FROM users LIMIT 1")
+        return cursor.fetchone() is not None
 
     def create_user(self, username: str, password: str) -> User:
         username = (username or "").strip()
@@ -273,10 +318,14 @@ class UserStore:
         if len(password) < 8:
             raise ValueError("Das Passwort muss mindestens 8 Zeichen enthalten.")
         username_lower = username.lower()
-        if self.collection.find_one({"username_lower": username_lower}):
+        existing = self.conn.execute(
+            "SELECT 1 FROM users WHERE username_lower = ?",
+            (username_lower,),
+        ).fetchone()
+        if existing:
             raise ValueError("Der Benutzername ist bereits vergeben.")
         user_id = secrets.token_hex(12)
-        created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(timezone.utc).isoformat()
         password_hash = generate_password_hash(password)
         is_admin = not self.has_users()
         document = {
@@ -284,32 +333,58 @@ class UserStore:
             "username": username,
             "username_lower": username_lower,
             "password_hash": password_hash,
-            "is_admin": is_admin,
+            "is_admin": int(is_admin),
             "created_at": created_at,
         }
-        self.collection.insert_one(document)
-        return User(
-            id=user_id,
-            username=username,
-            password_hash=password_hash,
-            is_admin=is_admin,
-            created_at=created_at,
-        )
+        try:
+            with self._lock, self.conn:
+                self.conn.execute(
+                    """
+                    INSERT INTO users (
+                        _id,
+                        username,
+                        username_lower,
+                        password_hash,
+                        is_admin,
+                        created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        document["_id"],
+                        document["username"],
+                        document["username_lower"],
+                        document["password_hash"],
+                        document["is_admin"],
+                        document["created_at"],
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError("Der Benutzername ist bereits vergeben.") from exc
+        return self._from_document(document)
 
     def get(self, user_id: str) -> User | None:
-        document = self.collection.find_one({"_id": user_id})
-        if not document:
+        cursor = self.conn.execute(
+            "SELECT * FROM users WHERE _id = ?",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
             return None
-        return self._from_document(document)
+        return self._from_document(dict(row))
 
     def find_by_username(self, username: str) -> User | None:
         username = (username or "").strip().lower()
         if not username:
             return None
-        document = self.collection.find_one({"username_lower": username})
-        if not document:
+        cursor = self.conn.execute(
+            "SELECT * FROM users WHERE username_lower = ?",
+            (username,),
+        )
+        row = cursor.fetchone()
+        if row is None:
             return None
-        return self._from_document(document)
+        return self._from_document(dict(row))
 
     def authenticate(self, username: str, password: str) -> User | None:
         user = self.find_by_username(username)
@@ -322,32 +397,71 @@ class UserStore:
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me")
-app.config["MONGO_URI"] = os.environ.get("MONGO_URI", "mongodb://localhost:27017/fileshare")
-app.config["MONGO_DB_NAME"] = os.environ.get("MONGO_DB_NAME")
+app.config["DATABASE_PATH"] = os.environ.get("DATABASE_PATH", "fileshare.db")
 
 
-def _resolve_database(client: MongoClient, app: Flask) -> Database:
-    db_name = app.config.get("MONGO_DB_NAME") or os.environ.get("MONGO_DB_NAME")
-    if db_name:
-        return client[db_name]
-    try:
-        database = client.get_default_database()
-    except ConfigurationError:
-        database = None
-    if database is None:
-        database = client["fileshare"]
-    return database
+def _get_database_path(app: Flask) -> Path:
+    configured = app.config.get("DATABASE_PATH") or os.environ.get("DATABASE_PATH")
+    if not configured:
+        configured = "fileshare.db"
+    path = Path(configured).expanduser()
+    if not path.is_absolute():
+        path = Path(app.root_path) / path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
-def _create_client(app: Flask) -> MongoClient:
-    uri = app.config["MONGO_URI"]
-    return MongoClient(uri)
+def _create_connection(app: Flask) -> sqlite3.Connection:
+    db_path = _get_database_path(app)
+    connection = sqlite3.connect(db_path, check_same_thread=False)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA journal_mode = WAL")
+    connection.execute("PRAGMA busy_timeout = 5000")
+    return connection
 
 
-mongo_client = _create_client(app)
-db = _resolve_database(mongo_client, app)
-file_store = FileStore(db["files"])
-user_store = UserStore(db["users"])
+def _initialize_schema(connection: sqlite3.Connection) -> None:
+    with connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                _id TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                username_lower TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                is_admin INTEGER NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS files (
+                _id TEXT PRIMARY KEY,
+                original_name TEXT NOT NULL,
+                stored_name TEXT NOT NULL,
+                size INTEGER NOT NULL,
+                content_type TEXT,
+                uploaded_at TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
+                owner_username TEXT NOT NULL,
+                share_token TEXT UNIQUE
+            )
+            """
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_files_owner_uploaded ON files(owner_id, uploaded_at)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_files_uploaded_at ON files(uploaded_at)"
+        )
+
+
+db_connection = _create_connection(app)
+_initialize_schema(db_connection)
+file_store = FileStore(db_connection)
+user_store = UserStore(db_connection)
 
 
 def is_safe_url(target: str | None) -> bool:
