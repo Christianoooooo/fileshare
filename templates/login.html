@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html class="dark" lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Anmeldung · FileShare</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#136dec",
+            },
+            fontFamily: {
+              display: ["Manrope", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-white">
+    <div class="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <div class="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/80 p-8 shadow-xl">
+        <div class="mb-8 text-center">
+          <h1 class="text-2xl font-bold">FileShare</h1>
+          <p class="mt-2 text-sm text-white/60">Melde dich an, um auf deine Dateien zuzugreifen.</p>
+        </div>
+        {% if error %}
+        <div class="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {{ error }}
+        </div>
+        {% endif %}
+        <form class="flex flex-col gap-4" method="post">
+          <input name="next" type="hidden" value="{{ next_url or '' }}" />
+          <label class="flex flex-col gap-2 text-sm font-medium text-white/80">
+            Benutzername
+            <input
+              class="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2 text-white focus:border-primary focus:outline-none"
+              name="username"
+              required
+              type="text"
+            />
+          </label>
+          <label class="flex flex-col gap-2 text-sm font-medium text-white/80">
+            Passwort
+            <input
+              class="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2 text-white focus:border-primary focus:outline-none"
+              name="password"
+              required
+              type="password"
+            />
+          </label>
+          <button
+            class="mt-2 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90"
+            type="submit"
+          >
+            Anmelden
+          </button>
+        </form>
+        <div class="mt-6 text-center text-sm text-white/60">
+          {% if next_url %}
+          <p>Du wirst nach der Anmeldung automatisch weitergeleitet.</p>
+          {% endif %}
+          {% if registration_open %}
+          <p class="mt-2">
+            Noch kein Konto? <a class="text-primary hover:underline" href="{{ url_for('register') }}">Jetzt registrieren</a>
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

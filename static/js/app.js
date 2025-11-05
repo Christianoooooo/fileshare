@@ -7,6 +7,18 @@ const state = {
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
 
+function redirectToLogin() {
+  window.location.href = "/login";
+}
+
+function handleUnauthorizedResponse(response) {
+  if (response && response.status === 401) {
+    redirectToLogin();
+    return true;
+  }
+  return false;
+}
+
 function initialise() {
   const initial = window.initialFileData || { files: [], totalSize: 0, capacity: 0 };
   state.files = initial.files || [];
@@ -215,6 +227,10 @@ function uploadQueueItem(item) {
   });
 
   xhr.addEventListener("load", () => {
+    if (xhr.status === 401) {
+      redirectToLogin();
+      return;
+    }
     try {
       const response = JSON.parse(xhr.responseText || "{}");
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -344,6 +360,9 @@ function formatDate(dateString) {
 async function refreshFiles(showToastOnSuccess = false) {
   try {
     const response = await fetch("/api/files");
+    if (handleUnauthorizedResponse(response)) {
+      return;
+    }
     if (!response.ok) {
       throw new Error("Fehler beim Laden der Dateien.");
     }
@@ -425,6 +444,11 @@ function createFileCard(file) {
   const card = document.createElement("div");
   card.className = "file-card flex flex-col gap-4 rounded-xl border border-gray-200/60 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-[#324867] dark:bg-[#1A1B26]/60";
 
+  const ownerBadge =
+    file.owner && window.currentUser?.is_admin
+      ? `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary/80">Eigentümer: ${file.owner.username}</span>`
+      : "";
+
   const viewButton = file.view_url
     ? `<a class="action-button" data-action="view" href="${file.view_url}" target="_blank" rel="noopener">
         <span class="material-symbols-outlined text-base">visibility</span>
@@ -432,10 +456,9 @@ function createFileCard(file) {
       </a>`
     : "";
 
-  const isImage = (file.content_type || "").toLowerCase().startsWith("image/");
-  const directShareButton = file.share_raw_url && isImage
+  const directShareButton = file.share_raw_url
     ? `<button class="action-button" data-action="copy-direct" type="button">
-        <span class="material-symbols-outlined text-base">image</span>
+        <span class="material-symbols-outlined text-base">open_in_new</span>
         Direktlink
       </button>`
     : "";
@@ -446,6 +469,7 @@ function createFileCard(file) {
       <div class="min-w-0">
         <p class="truncate text-lg font-semibold text-gray-900 dark:text-white" title="${file.name}">${file.name}</p>
         <p class="text-sm text-gray-500 dark:text-[#92a9c9]">${formatBytes(file.size)} · ${formatDate(file.uploaded_at)}</p>
+        ${ownerBadge}
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -515,6 +539,17 @@ function createFileCard(file) {
   downloadLink?.setAttribute("rel", "noopener");
   viewLink?.setAttribute("rel", "noopener");
 
+  const canManage = file.can_manage !== false;
+  if (!canManage) {
+    shareButton?.classList.add("hidden");
+    copyButton?.classList.add("hidden");
+    copyDirectButton?.classList.add("hidden");
+    revokeButton?.classList.add("hidden");
+    renameButton?.classList.add("hidden");
+    deleteButton?.classList.add("hidden");
+    shareArea?.classList.add("hidden");
+  }
+
   shareButton?.addEventListener("click", async () => {
     await ensureShareLink(file, shareArea, shareInput);
   });
@@ -548,6 +583,9 @@ function createFileCard(file) {
       const response = await fetch(`/api/files/${file.id}/share`, {
         method: "DELETE",
       });
+      if (handleUnauthorizedResponse(response)) {
+        return;
+      }
       if (!response.ok) {
         throw new Error("Der Freigabelink konnte nicht entfernt werden.");
       }
@@ -574,6 +612,9 @@ function createFileCard(file) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName }),
       });
+      if (handleUnauthorizedResponse(response)) {
+        return;
+      }
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || "Der Dateiname konnte nicht geändert werden.");
@@ -598,6 +639,9 @@ function createFileCard(file) {
       const response = await fetch(`/api/files/${file.id}`, {
         method: "DELETE",
       });
+      if (handleUnauthorizedResponse(response)) {
+        return;
+      }
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || "Die Datei konnte nicht gelöscht werden.");
@@ -624,6 +668,9 @@ async function ensureShareLink(file, shareArea, shareInput) {
     const response = await fetch(`/api/files/${file.id}/share`, {
       method: "POST",
     });
+    if (handleUnauthorizedResponse(response)) {
+      return;
+    }
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       throw new Error(data.message || "Der Freigabelink konnte nicht erstellt werden.");
