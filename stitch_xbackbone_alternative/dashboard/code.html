@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FileShare Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101822",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-64 flex-shrink-0 bg-[#1A1B26]/50 dark:bg-[#111822] p-4 flex flex-col justify-between border-r border-gray-200/10 dark:border-white/10">
+<div class="flex flex-col gap-8">
+<div class="flex items-center gap-3 px-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="FileShare company logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDHhjo9DQHsoQcb0cV1_ut0GixIHZ98-IMBZH4Tj-Qy2q8xE5rgrUhiac5k4zUzpzjKZ7vS4uQ0c1txKrmzjWsIyrNDzN3dVdDLHcK40phMINCLqpjeHy9snIMwg8gQY2EEJ66eIAqLdin-9IM6NuUG7doaH0tbJfgVEqLuAVtNAZoRXWGrn4yVlSoiEkEIgF7W0yae3-PzFLxfHAuZPPJFMFxKVPNwCXNvpV1vcehmTXgtHEqBHA4tFY8p1nLieKnTLR1ATSWdfx4");'></div>
+<div class="flex flex-col">
+<h1 class="text-white text-base font-bold leading-normal">FileShare</h1>
+<p class="text-gray-400 dark:text-[#92a9c9] text-sm font-normal leading-normal">Workspace</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/20 dark:bg-[#233348] text-primary dark:text-white" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<p class="text-sm font-medium leading-normal">Dashboard</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 dark:text-white hover:bg-primary/10 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">folder</span>
+<p class="text-sm font-medium leading-normal">My Files</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 dark:text-white hover:bg-primary/10 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">photo_album</span>
+<p class="text-sm font-medium leading-normal">Albums</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 dark:text-white hover:bg-primary/10 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-sm font-medium leading-normal">Settings</p>
+</a>
+</nav>
+</div>
+<div class="flex flex-col gap-4">
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+<span class="truncate">Logout</span>
+</button>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 p-6 lg:p-8">
+<div class="max-w-7xl mx-auto">
+<!-- Toolbar -->
+<header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+<div class="flex-1">
+<!-- PageHeading -->
+<h1 class="text-gray-900 dark:text-white text-3xl font-black leading-tight tracking-[-0.033em]">Dashboard</h1>
+<p class="text-gray-500 dark:text-[#92a9c9] text-base font-normal leading-normal mt-1">Welcome back, developer!</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2.5 rounded-lg text-gray-500 dark:text-white hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2.5 rounded-lg text-gray-500 dark:text-white hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">create_new_folder</span>
+</button>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined text-base">upload</span>
+<span class="truncate">Upload File</span>
+</button>
+</div>
+</header>
+<!-- Stats -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+<div class="flex flex-col gap-4 rounded-xl p-6 border border-gray-200/80 dark:border-[#324867] bg-white dark:bg-[#1A1B26]/50">
+<p class="text-gray-900 dark:text-white text-base font-medium leading-normal">Storage Used</p>
+<p class="text-gray-900 dark:text-white tracking-light text-3xl font-bold leading-tight">15.2 GB / 50 GB</p>
+<!-- ProgressBar -->
+<div class="flex flex-col gap-2">
+<div class="rounded-full bg-gray-200 dark:bg-[#324867]">
+<div class="h-2 rounded-full bg-primary" style="width: 30.4%;"></div>
+</div>
+<div class="flex justify-end"><p class="text-gray-500 dark:text-white text-sm font-normal leading-normal">30%</p></div>
+</div>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 border border-gray-200/80 dark:border-[#324867] bg-white dark:bg-[#1A1B26]/50">
+<p class="text-gray-900 dark:text-white text-base font-medium leading-normal">Total Files</p>
+<p class="text-gray-900 dark:text-white tracking-light text-3xl font-bold leading-tight">1,240</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 border border-gray-200/80 dark:border-[#324867] bg-white dark:bg-[#1A1B26]/50">
+<p class="text-gray-900 dark:text-white text-base font-medium leading-normal">Active Links</p>
+<p class="text-gray-900 dark:text-white tracking-light text-3xl font-bold leading-tight">85</p>
+</div>
+</section>
+<!-- Recent Uploads Section -->
+<section>
+<div class="flex justify-between items-center mb-4">
+<h2 class="text-xl font-bold text-gray-900 dark:text-white">Recent Uploads</h2>
+<a class="text-sm font-medium text-primary hover:underline" href="#">View All</a>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+<!-- File Card Example 1 -->
+<div class="group relative flex flex-col gap-3 rounded-xl border border-gray-200/80 dark:border-[#324867] bg-white dark:bg-[#1A1B26]/50 overflow-hidden">
+<div class="aspect-video bg-gray-200 dark:bg-gray-700 w-full bg-cover bg-center" data-alt="Abstract colorful gradient wave pattern" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDlmeGas4SFLXVNteVjVGyWa1ZKXDyzeMpwZFn6lsrIfJ6Lj_wXCRCBxjZIIy6XQ90XP4A0uOyhPj4l7XWqOORy9KCi1EpMLy1fGuGt3U5sDufjinYz-vdLVSaGbibhWG3uBf7xL-alqG3BBt5tsWWZwwHIr85ai_uwmPIC0uQS7YOCkTJkgGiiLD9o4mXvs4AgV1oiKAvBrzmkMFSKO5C1JXZNh7tid_7MRJoeHCVxvH-mUPB2zfDA4sTFrQPh9YToLyncVi9_wv8');"></div>
+<div class="p-4 pt-0">
+<h3 class="text-gray-900 dark:text-white font-semibold truncate">abstract-gradient.png</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400">2.1 MB・Uploaded 2 hours ago</p>
+</div>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="flex gap-4">
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">link</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">delete</span></button>
+</div>
+</div>
+</div>
+<!-- File Card Example 2 -->
+<div class="group relative flex flex-col gap-3 rounded-xl border border-gray-200/80 dark:border-[#324867] bg-white dark:bg-[#1A1B26]/50 overflow-hidden">
+<div class="aspect-video bg-gray-200 dark:bg-gray-700 w-full flex items-center justify-center">
+<span class="material-symbols-outlined text-5xl text-gray-400 dark:text-gray-500">description</span>
+</div>
+<div class="p-4 pt-0">
+<h3 class="text-gray-900 dark:text-white font-semibold truncate">project-brief.pdf</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400">850 KB・Uploaded yesterday</p>
+</div>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="flex gap-4">
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">link</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">delete</span></button>
+</div>
+</div>
+</div>
+<!-- File Card Example 3 -->
+<div class="group relative flex flex-col gap-3 rounded-xl border border-gray-200/80 dark:border-[#324867] bg-white dark:bg-[#1A1B26]/50 overflow-hidden">
+<div class="aspect-video bg-gray-200 dark:bg-gray-700 w-full bg-cover bg-center" data-alt="Smooth colorful gradient background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIqQuUx0zx37uXKAD7VPwDQIzuBmf67_QOSBSWDzEFwljsly_NPdLw38_o-bmBW-kgZNaJ4R6sOpucNA8Mhl7yd_QAzBMHncMMVGX8abCwryO-KcuTZVpiHFzpx706HZCzLpVmkVPPLFV8bcjW8qN3MFZq7Tbv5Gw-Q0C2bXzQoJEBCjAOnWFk_z8wwvUmNN8531mBWJj4z30zFE3TapTb66CdgysPBkyjGMomDB6Z9_S0PL8MPVyABVDn9Le_wSy0xVSG8YM6Z5c');"></div>
+<div class="p-4 pt-0">
+<h3 class="text-gray-900 dark:text-white font-semibold truncate">website-hero.jpg</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400">4.5 MB・Uploaded yesterday</p>
+</div>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="flex gap-4">
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">link</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">delete</span></button>
+</div>
+</div>
+</div>
+<!-- File Card Example 4 -->
+<div class="group relative flex flex-col gap-3 rounded-xl border border-gray-200/80 dark:border-[#324867] bg-white dark:bg-[#1A1B26]/50 overflow-hidden">
+<div class="aspect-video bg-gray-200 dark:bg-gray-700 w-full flex items-center justify-center">
+<span class="material-symbols-outlined text-5xl text-gray-400 dark:text-gray-500">folder_zip</span>
+</div>
+<div class="p-4 pt-0">
+<h3 class="text-gray-900 dark:text-white font-semibold truncate">design-assets.zip</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400">25.8 MB・Uploaded 3 days ago</p>
+</div>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="flex gap-4">
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">link</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-2 rounded-full bg-white/20 text-white hover:bg-white/30"><span class="material-symbols-outlined">delete</span></button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

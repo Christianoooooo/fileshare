@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>File Management Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#136dec",
+              "background-light": "#f6f7f8",
+              "background-dark": "#111822",
+              "surface-light": "#ffffff",
+              "surface-dark": "#1b2531"
+            },
+            fontFamily: {
+              "display": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="flex h-screen w-full">
+<!-- SideNavBar -->
+<aside class="w-64 flex-shrink-0 flex flex-col bg-surface-light dark:bg-surface-dark border-r border-gray-200 dark:border-gray-800 p-4">
+<div class="flex items-center gap-3 px-2 mb-8">
+<span class="material-symbols-outlined text-primary text-3xl">cloud_upload</span>
+<h1 class="text-xl font-bold text-gray-900 dark:text-white">FileFlow</h1>
+</div>
+<div class="flex flex-col gap-4 flex-grow">
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary dark:bg-primary/20" href="#">
+<span class="material-symbols-outlined text-lg">folder_open</span>
+<p class="text-sm font-semibold">All Files</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400" href="#">
+<span class="material-symbols-outlined text-lg">star</span>
+<p class="text-sm font-medium">Favorites</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400" href="#">
+<span class="material-symbols-outlined text-lg">photo_album</span>
+<p class="text-sm font-medium">Collections</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400" href="#">
+<span class="material-symbols-outlined text-lg">delete</span>
+<p class="text-sm font-medium">Trash</p>
+</a>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex gap-3 items-center">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar of Alex Hartman" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAwi_Wj9Bk96cCOc6btp0Ire2XK5IRhRqzDkrLrsfu-litJ5yEMJjei-JoSiJWrhMpDq1s763NxGPtQP59M7WexYYBhI1JdB2RtL7EbEICLse6RDOPp-MKE7E_9wFpWW0Mt14VtyOkPlegLLyrZffg8KF5T2BFpvu7NkyrEnzGWrTAokABzFvoWAK0nxKk4Gpci--oAhwrT6jP4G1f079FFpI-Zoi06aYdQSKl262WeDcoWDjw0_9Mi7o4GZrYe0y2ZXJDyeCVKp_o");'></div>
+<div class="flex flex-col">
+<h1 class="text-gray-900 dark:text-white text-sm font-semibold">Alex Hartman</h1>
+<p class="text-gray-500 dark:text-gray-400 text-xs">alex.hartman@example.com</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-y-auto">
+<header class="sticky top-0 z-10 flex h-16 flex-shrink-0 items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm px-6">
+<!-- SearchBar -->
+<div class="flex-1 max-w-xl">
+<label class="flex flex-col min-w-40 h-10 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-gray-100 dark:bg-surface-dark">
+<div class="text-gray-400 dark:text-gray-500 flex items-center justify-center pl-3">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-0 border-none bg-transparent h-full placeholder:text-gray-400 dark:placeholder:text-gray-500 px-2 text-sm" placeholder="Search files by name, tag, or type..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-wide">
+<span class="material-symbols-outlined text-base">upload</span>
+<span class="truncate">Upload</span>
+</button>
+<button class="p-2 text-gray-500 dark:text-gray-400 rounded-full hover:bg-gray-100 dark:hover:bg-white/5">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-gray-500 dark:text-gray-400 rounded-full hover:bg-gray-100 dark:hover:bg-white/5">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<div class="flex-1 p-6">
+<!-- PageHeading -->
+<div class="flex flex-wrap justify-between gap-3 mb-6">
+<div class="flex min-w-72 flex-col gap-2">
+<p class="text-gray-900 dark:text-white text-3xl font-bold leading-tight">All Files</p>
+<p class="text-gray-500 dark:text-gray-400 text-base font-normal">View, organize, edit, and delete your uploaded files.</p>
+</div>
+</div>
+<!-- Toolbar and View Toggle -->
+<div class="flex justify-between items-center gap-4 mb-4">
+<!-- ToolBar -->
+<div class="flex items-center gap-2 rounded-lg bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-800 p-1">
+<p class="text-sm font-medium text-gray-600 dark:text-gray-400 pl-2 pr-1">2 items selected</p>
+<button aria-label="Download" class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-md">
+<span class="material-symbols-outlined text-xl">download</span>
+</button>
+<button aria-label="Add to Collection" class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-md">
+<span class="material-symbols-outlined text-xl">create_new_folder</span>
+</button>
+<button aria-label="Delete" class="p-2 text-red-500 hover:bg-red-500/10 rounded-md">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+<!-- SegmentedButtons -->
+<div class="flex w-48">
+<div class="flex h-10 flex-1 items-center justify-center rounded-lg bg-gray-100 dark:bg-surface-dark p-1">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-white has-[:checked]:dark:bg-background-dark has-[:checked]:shadow-sm text-gray-500 dark:text-gray-400 has-[:checked]:text-gray-800 has-[:checked]:dark:text-white text-sm font-medium">
+<span class="material-symbols-outlined text-lg">grid_view</span>
+<input checked="" class="invisible w-0" name="view-toggle" type="radio" value="Grid View"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-white has-[:checked]:dark:bg-background-dark has-[:checked]:shadow-sm text-gray-500 dark:text-gray-400 has-[:checked]:text-gray-800 has-[:checked]:dark:text-white text-sm font-medium">
+<span class="material-symbols-outlined text-lg">view_list</span>
+<input class="invisible w-0" name="view-toggle" type="radio" value="List View"/>
+</label>
+</div>
+</div>
+</div>
+<!-- Files Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+<!-- File Card - Selected -->
+<div class="relative group border-2 border-primary rounded-lg bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+<div class="absolute top-2 left-2 z-10 size-5 rounded-full bg-primary flex items-center justify-center border-2 border-white dark:border-surface-dark">
+<span class="material-symbols-outlined text-white text-sm">check</span>
+</div>
+<div class="aspect-square w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="YouTube logo on a purple background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfOfnKF4YyOCerA3CerWmKY2dYcSJLF1y-v4lbjKpE_eY4TukXa0isdVm2zI9AEqWbHBxwuM_U5CQngC6eqhyPuDQsF8EyGdgkaGYhQ8W7JGLfdeTSwdjJu18tvY_vumZDI-13s_PbOvw9FbzCmgR7yt62shqQMxw5jntX0GzWnHB843Yv5wLanUacSvyKdRfooVrJkdIgyHnStCNSIvz1zQIeIesMJWTG3QJ4Rg3TvQdt-vBVBklpLZuPBk-ZRCAzTm-QIOSSkUo"/>
+</div>
+<div class="p-3">
+<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">youtube-logo.png</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">1.2 MB</p>
+</div>
+</div>
+<!-- File Card - Selected -->
+<div class="relative group border-2 border-primary rounded-lg bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+<div class="absolute top-2 left-2 z-10 size-5 rounded-full bg-primary flex items-center justify-center border-2 border-white dark:border-surface-dark">
+<span class="material-symbols-outlined text-white text-sm">check</span>
+</div>
+<div class="aspect-square w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-6">
+<span class="material-symbols-outlined text-5xl text-blue-500">description</span>
+</div>
+<div class="p-3">
+<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">project_brief.docx</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">256 KB</p>
+</div>
+</div>
+<!-- File Card -->
+<div class="relative group border border-gray-200 dark:border-gray-800 rounded-lg bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+<div class="absolute top-2 left-2 z-10 size-5 rounded-full bg-white dark:bg-background-dark border border-gray-300 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="aspect-square w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="A modern building with a pool at night" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5PcBBmVd4IsXsR_v9vLkwZf1tZb6GKcFGSXQ_RXry5TJgw-tIWdStga3DDclkBzxOR7GAkAh1LTT0A74XVoHSiYNTIYRKYRj4M8Uei_iiiH0iC3pah2LvkUPcm2167mAc06pdN10RbYnWtofe1q4zgQgDjMcsMNVm7_WV9l2JrMYbQ5d3MaWhTJtK_n_qVQdA4ZJIlcJnz90wvZwInzsk1nApjkNJH1xeCkwFAUAFv08Bc4Gjcho-gavtV3nEWZwuOMI3ga083l0"/>
+</div>
+<div class="p-3">
+<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">architecture-night.jpg</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">4.5 MB</p>
+</div>
+</div>
+<!-- File Card -->
+<div class="relative group border border-gray-200 dark:border-gray-800 rounded-lg bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+<div class="absolute top-2 left-2 z-10 size-5 rounded-full bg-white dark:bg-background-dark border border-gray-300 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="aspect-square w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="Laptop with code on the screen" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtdyPUh8OlL7CDYahaVchWBnNFN53BXj3HmozxdGTX7TnzuJvBUcg-9WsxzMOrzflZeUAToW7j-7kCQne4kmr2hPraKKUv6xoOoOABz3uSj1m6HprfSdBQZCuKBqmG90uZ98OYNTLjwmkRm8o1DcB1k1R2KAcjiyl6v15HgUwUST7RLgY1vVdxb-yntra8OU25Z9LLo6xJ0g6hhciW0zlJIdV8jxLUifG8e5JlZsyJHg9T5_vigL5fSNLtudr5RABKlr-tnEVwqAk"/>
+</div>
+<div class="p-3">
+<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">coding_session.jpg</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">3.1 MB</p>
+</div>
+</div>
+<!-- File Card -->
+<div class="relative group border border-gray-200 dark:border-gray-800 rounded-lg bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+<div class="absolute top-2 left-2 z-10 size-5 rounded-full bg-white dark:bg-background-dark border border-gray-300 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="aspect-square w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-6">
+<span class="material-symbols-outlined text-5xl text-green-500">table</span>
+</div>
+<div class="p-3">
+<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">financial_report_q3.xlsx</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">780 KB</p>
+</div>
+</div>
+<!-- File Card -->
+<div class="relative group border border-gray-200 dark:border-gray-800 rounded-lg bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+<div class="absolute top-2 left-2 z-10 size-5 rounded-full bg-white dark:bg-background-dark border border-gray-300 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="aspect-square w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="A smiling dog with its tongue out" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZRD1QE6Df72Yu6ubZelEz389M3FUb84JF43GC6NbfeEo_7KqJzjh8j16G_m30waycRbuzGTfvzedrotIjiMrcjq6X5SkBoeZ9q8vj0I5mvYXBTrObp25L9DkHRfoy8hc7Y1jHwN7-ZZFHzR7GCAmF5tABu0ua7d1TWvnGgurQJ-mZVh9d0BmFhU5lE-9150dvfdReGC9Aqhp-w4X3pVEPrnuGCSXJax0e_Ryv1b0Gfm-EqanbzxEiRaIU19tmq-iyvbuhwbz4_pc"/>
+</div>
+<div class="p-3">
+<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">happy_doggo.jpg</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">2.8 MB</p>
+</div>
+</div>
+<!-- File Card -->
+<div class="relative group border border-gray-200 dark:border-gray-800 rounded-lg bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden">
+<div class="absolute top-2 left-2 z-10 size-5 rounded-full bg-white dark:bg-background-dark border border-gray-300 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="aspect-square w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-6">
+<span class="material-symbols-outlined text-5xl text-red-500">picture_as_pdf</span>
+</div>
+<div class="p-3">
+<p class="text-sm font-semibold text-gray-900 dark:text-white truncate">invoice-03-2024.pdf</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">120 KB</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

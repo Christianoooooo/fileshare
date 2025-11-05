@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Share File</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#136dec",
+              "background-light": "#f6f7f8",
+              "background-dark": "#101822",
+            },
+            fontFamily: {
+              "display": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col items-center justify-center p-4 sm:p-6 md:p-8">
+<div class="flex w-full max-w-[960px] flex-col rounded-xl border border-white/10 bg-[#1A1D23]/50 shadow-2xl">
+<!-- Header -->
+<div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 p-6">
+<div class="flex items-center gap-4">
+<div class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/20 text-primary">
+<span class="material-symbols-outlined" style="font-size: 32px;">image</span>
+</div>
+<h1 class="font-display text-2xl font-bold text-white">Share 'Design_Mockup_V2.fig'</h1>
+</div>
+</div>
+<!-- Content Area -->
+<div class="flex flex-col gap-8 p-6">
+<!-- General Sharing -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white">link</span>
+<p class="font-display text-base font-medium text-white">Enable Sharing</p>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none bg-[#233348] p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary">
+<div class="h-full w-[27px] rounded-full bg-white transition-transform" style="box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+<label class="flex flex-col">
+<div class="flex w-full items-stretch rounded-lg">
+<input class="form-input h-14 flex-1 resize-none overflow-hidden rounded-r-none rounded-lg border border-[#324867] bg-[#192433] p-[15px] text-base font-normal text-white placeholder:text-[#92a9c9] focus:border-primary focus:outline-0 focus:ring-0" readonly="" value="https://example.co/s/aB1cDE2fG3"/>
+<button class="flex items-center justify-center rounded-r-lg border border-l-0 border-[#324867] bg-[#192433] px-4 text-[#92a9c9] transition-colors hover:bg-[#233348] hover:text-white">
+<span class="material-symbols-outlined">content_copy</span>
+</button>
+</div>
+</label>
+</div>
+<!-- Access Control -->
+<div>
+<h3 class="font-display text-lg font-bold tracking-[-0.015em] text-white">Who can access?</h3>
+<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+<label class="flex flex-col gap-2">
+<p class="font-display text-base font-medium text-white">General Access</p>
+<select class="form-select h-14 w-full appearance-none rounded-lg border border-[#324867] bg-[#192433] bg-[url('data:image/svg+xml,%3csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2724px%27%20height=%2724px%27%20fill=%27rgb(146,169,201)%27%20viewBox=%270%200%20256%20256%27%3e%3cpath%20d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right-4 bg-no-repeat p-[15px] text-base text-white focus:border-primary focus:outline-0 focus:ring-0">
+<option>Anyone with the link</option>
+<option>Only invited people</option>
+<option>Team members only</option>
+</select>
+</label>
+<label class="flex flex-col gap-2">
+<p class="font-display text-base font-medium text-white">Permissions</p>
+<select class="form-select h-14 w-full appearance-none rounded-lg border border-[#324867] bg-[#192433] bg-[url('data:image/svg+xml,%3csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2724px%27%20height=%2724px%27%20fill=%27rgb(146,169,201)%27%20viewBox=%270%200%20256%20256%27%3e%3cpath%20d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right-4 bg-no-repeat p-[15px] text-base text-white focus:border-primary focus:outline-0 focus:ring-0">
+<option>Can view</option>
+<option>Can edit</option>
+<option>Can comment</option>
+</select>
+</label>
+</div>
+</div>
+<!-- Security Settings -->
+<div>
+<h3 class="font-display text-lg font-bold tracking-[-0.015em] text-white">Add extra security</h3>
+<div class="mt-4 flex flex-col gap-4">
+<div class="rounded-lg border border-[#324867] bg-[#192433] p-4">
+<div class="flex items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white">lock</span>
+<p class="font-display text-base font-medium text-white">Password Protection</p>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none bg-[#233348] p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary">
+<div class="h-full w-[27px] rounded-full bg-white transition-transform" style="box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;"></div>
+<input class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+<div class="rounded-lg border border-[#324867] bg-[#192433] p-4">
+<div class="flex items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white">event_busy</span>
+<p class="font-display text-base font-medium text-white">Link Expiration</p>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none bg-[#233348] p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary">
+<div class="h-full w-[27px] rounded-full bg-white transition-transform" style="box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;"></div>
+<input class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer / Actions -->
+<div class="flex flex-col-reverse items-center justify-between gap-4 border-t border-white/10 p-6 sm:flex-row">
+<button class="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary/20 px-6 font-display text-base font-semibold text-primary transition-colors hover:bg-primary/30 sm:w-auto">
+<span class="material-symbols-outlined">code</span>
+                    Get Embed Code
+                </button>
+<div class="flex w-full flex-col-reverse gap-4 sm:w-auto sm:flex-row">
+<button class="h-12 w-full rounded-lg bg-transparent px-6 font-display text-base font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto">Cancel</button>
+<button class="h-12 w-full rounded-lg bg-primary px-6 font-display text-base font-semibold text-white transition-colors hover:bg-primary/90 sm:w-auto">Save Changes</button>
+</div>
+</div>
+</div>
+</div>
+</body></html>
