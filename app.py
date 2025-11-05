@@ -913,7 +913,23 @@ def upload_files() -> Response:
 
     status_code = 200 if saved_files else 400
     message = "Upload abgeschlossen." if saved_files else "Keine Dateien wurden hochgeladen."
-    return jsonify({"message": message, "files": saved_files}), status_code
+    
+    # Build response with URL fields at root level for ShareX compatibility
+    response_data: dict[str, t.Any] = {
+        "message": message,
+        "files": saved_files,
+    }
+    
+    # Add first file's URLs at root level for ShareX compatibility
+    if saved_files:
+        first_file = saved_files[0]
+        response_data["url"] = first_file.get("view_url")
+        response_data["view_url"] = first_file.get("view_url")
+        response_data["download_url"] = first_file.get("download_url")
+        response_data["share_url"] = first_file.get("share_url")
+        response_data["share_raw_url"] = first_file.get("share_raw_url")
+    
+    return jsonify(response_data), status_code
 
 
 @app.get("/api/files")
@@ -1212,13 +1228,13 @@ def sharex_config() -> Response:
         token = user_store.regenerate_api_token(user.id)
         user.api_token = token
     url_mode = user.copy_url_mode or "view"
-    url_template = "$json:files[0].view_url$"
+    url_template = "$json:view_url$"
     if url_mode == "download":
-        url_template = "$json:files[0].download_url$"
+        url_template = "$json:download_url$"
     elif url_mode == "share":
-        url_template = "$json:files[0].share_url$"
+        url_template = "$json:share_url$"
     elif url_mode == "raw":
-        url_template = "$json:files[0].share_raw_url$"
+        url_template = "$json:share_raw_url$"
     upload_url = url_for("upload_files", _external=True)
     config = {
         "Version": "14.1.0",
@@ -1229,7 +1245,7 @@ def sharex_config() -> Response:
         "Body": "MultipartFormData",
         "FileFormName": "files",
         "URL": url_template,
-        "DeletionURL": "$json:files[0].download_url$",
+        "DeletionURL": "$json:download_url$",
         "ErrorMessage": "$json:message$",
         "Headers": {
             "Authorization": f"Bearer {user.api_token}",

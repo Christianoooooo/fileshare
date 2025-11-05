@@ -3,3 +3,8 @@ __pycache__/
 instance/
 uploads/
 .env
+venv/
+*.db
+*.db-shm
+*.db-wal
+cookies.txt
