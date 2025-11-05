@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="dark" lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>FileShare Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#136dec",
+              "background-light": "#f6f7f8",
+              "background-dark": "#101822",
+              success: "#28a745",
+              error: "#dc3545",
+            },
+            fontFamily: {
+              display: ["Manrope", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background-light font-display text-gray-800 dark:bg-background-dark dark:text-gray-200"
+  >
+    <div class="flex min-h-screen">
+      <aside
+        class="flex w-64 flex-shrink-0 flex-col justify-between border-r border-gray-200/60 bg-[#1A1B26]/40 p-4 dark:border-white/10 dark:bg-[#111822]"
+      >
+        <div class="flex flex-col gap-8">
+          <div class="flex items-center gap-3 px-2">
+            <div
+              class="size-10 rounded-full bg-cover bg-center"
+              style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDHhjo9DQHsoQcb0cV1_ut0GixIHZ98-IMBZH4Tj-Qy2q8xE5rgrUhiac5k4zUzpzjKZ7vS4uQ0c1txKrmzjWsIyrNDzN3dVdDLHcK40phMINCLqpjeHy9snIMwg8gQY2EEJ66eIAqLdin-9IM6NuUG7doaH0tbJfgVEqLuAVtNAZoRXWGrn4yVlSoiEkEIgF7W0yae3-PzFLxfHAuZPPJFMFxKVPNwCXNvpV1vcehmTXgtHEqBHA4tFY8p1nLieKnTLR1ATSWdfx4');"
+            ></div>
+            <div class="flex flex-col">
+              <h1 class="text-base font-bold text-white">FileShare</h1>
+              <p class="text-sm font-normal text-gray-400 dark:text-[#92a9c9]">
+                Workspace
+              </p>
+            </div>
+          </div>
+          <nav class="flex flex-col gap-2">
+            <span
+              class="flex items-center gap-3 rounded-lg bg-primary/20 px-3 py-2 text-primary dark:bg-[#233348] dark:text-white"
+            >
+              <span class="material-symbols-outlined">dashboard</span>
+              <p class="text-sm font-medium leading-normal">Dashboard</p>
+            </span>
+            <a
+              class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-primary/10 dark:text-white dark:hover:bg-white/5"
+              href="#all-files"
+            >
+              <span class="material-symbols-outlined">folder</span>
+              <p class="text-sm font-medium leading-normal">Meine Dateien</p>
+            </a>
+            <a
+              class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-primary/10 dark:text-white dark:hover:bg-white/5"
+              href="#upload"
+            >
+              <span class="material-symbols-outlined">upload</span>
+              <p class="text-sm font-medium leading-normal">Upload</p>
+            </a>
+            <a
+              class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-primary/10 dark:text-white dark:hover:bg-white/5"
+              href="/sharex-config"
+            >
+              <span class="material-symbols-outlined">settings_applications</span>
+              <p class="text-sm font-medium leading-normal">ShareX Config</p>
+            </a>
+          </nav>
+        </div>
+        <div class="flex flex-col gap-4">
+          <a
+            class="flex h-10 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-4 text-sm font-bold leading-normal tracking-[0.015em] text-white transition-colors hover:bg-primary/90"
+            href="/sharex-config"
+          >
+            ShareX herunterladen
+          </a>
+        </div>
+      </aside>
+      <main class="flex-1 p-6 lg:p-10">
+        <div class="mx-auto flex max-w-6xl flex-col gap-10">
+          <header
+            class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+          >
+            <div class="flex-1">
+              <h2 class="text-3xl font-black tracking-[-0.03em] text-gray-900 dark:text-white">
+                Willkommen zurück!
+              </h2>
+              <p class="text-base text-gray-500 dark:text-[#92a9c9]">
+                Lade neue Dateien hoch, verwalte bestehende Links und teile sie im Team.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <a
+                class="flex h-10 min-w-[84px] items-center justify-center gap-2 overflow-hidden rounded-lg bg-primary px-4 text-sm font-bold tracking-[0.015em] text-white transition-colors hover:bg-primary/90"
+                href="#upload"
+              >
+                <span class="material-symbols-outlined text-base">upload</span>
+                Upload starten
+              </a>
+              <a
+                class="flex h-10 min-w-[84px] items-center justify-center overflow-hidden rounded-lg border border-gray-200/60 px-4 text-sm font-bold tracking-[0.015em] text-gray-700 transition-colors hover:bg-gray-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                href="/sharex-config"
+              >
+                ShareX Config
+              </a>
+            </div>
+          </header>
+
+          <section
+            class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
+            id="stats"
+          >
+            <div
+              class="flex flex-col gap-4 rounded-xl border border-gray-200/60 bg-white p-6 dark:border-[#324867] dark:bg-[#1A1B26]/60"
+            >
+              <p class="text-base font-medium text-gray-900 dark:text-white">
+                Genutzter Speicher
+              </p>
+              <div class="flex items-baseline justify-between">
+                <p class="text-3xl font-bold text-gray-900 dark:text-white">
+                  <span id="used-storage">0 GB</span>
+                </p>
+                <p class="text-sm text-gray-500 dark:text-[#92a9c9]">
+                  von <span id="total-storage">0 GB</span>
+                </p>
+              </div>
+              <div>
+                <div class="h-2 w-full rounded-full bg-gray-200 dark:bg-[#324867]">
+                  <div
+                    class="h-2 rounded-full bg-primary"
+                    id="storage-progress"
+                    style="width: 0%"
+                  ></div>
+                </div>
+                <p
+                  class="mt-2 text-right text-sm text-gray-500 dark:text-[#92a9c9]"
+                  id="storage-percent"
+                >
+                  0%
+                </p>
+              </div>
+            </div>
+            <div
+              class="flex flex-col gap-3 rounded-xl border border-gray-200/60 bg-white p-6 dark:border-[#324867] dark:bg-[#1A1B26]/60"
+            >
+              <p class="text-base font-medium text-gray-900 dark:text-white">
+                Dateien insgesamt
+              </p>
+              <p class="text-3xl font-bold text-gray-900 dark:text-white" id="file-count">
+                0
+              </p>
+              <p class="text-sm text-gray-500 dark:text-[#92a9c9]">
+                Inklusive generierter Freigabelinks
+              </p>
+            </div>
+            <div
+              class="flex flex-col gap-3 rounded-xl border border-gray-200/60 bg-white p-6 dark:border-[#324867] dark:bg-[#1A1B26]/60"
+            >
+              <p class="text-base font-medium text-gray-900 dark:text-white">
+                Aktive Freigaben
+              </p>
+              <p class="text-3xl font-bold text-gray-900 dark:text-white" id="share-count">
+                0
+              </p>
+              <p class="text-sm text-gray-500 dark:text-[#92a9c9]">
+                Direktlinks, die über FileShare geteilt werden
+              </p>
+            </div>
+          </section>
+
+          <section
+            class="rounded-2xl border border-dashed border-gray-300 bg-white/70 p-6 dark:border-[#324867] dark:bg-[#1A1B26]/60"
+            id="upload"
+          >
+            <div class="flex flex-col gap-6">
+              <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+                    Dateien hochladen
+                  </h3>
+                  <p class="text-sm text-gray-500 dark:text-[#92a9c9]">
+                    Ziehe Dateien hierher oder wähle sie aus, um den Upload zu starten.
+                  </p>
+                </div>
+                <label
+                  class="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200/60 bg-white px-4 text-sm font-bold tracking-[0.015em] text-gray-700 transition-colors hover:bg-gray-100 dark:border-white/10 dark:bg-[#1A1B26] dark:text-white dark:hover:bg-white/5"
+                >
+                  <span class="material-symbols-outlined text-base">attach_file</span>
+                  Dateien wählen
+                  <input class="hidden" id="file-input" multiple type="file" />
+                </label>
+              </div>
+              <div
+                class="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-gray-300 px-6 py-14 text-center transition-colors duration-200 hover:border-primary hover:bg-primary/5 dark:border-[#324867] dark:hover:border-primary"
+                id="dropzone"
+              >
+                <span class="material-symbols-outlined text-5xl text-gray-400">
+                  cloud_upload
+                </span>
+                <p class="text-lg font-bold text-gray-900 dark:text-white">
+                  Dateien hierhin ziehen
+                </p>
+                <p class="text-sm text-gray-500 dark:text-[#92a9c9]">
+                  Unterstützte Formate: Bilder, Videos, ZIP-Archive und mehr (max. 500 MB pro Datei)
+                </p>
+                <button
+                  class="flex h-10 min-w-[120px] items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold tracking-[0.015em] text-white transition-colors hover:bg-primary/90"
+                  id="start-upload"
+                  type="button"
+                >
+                  Upload starten
+                </button>
+              </div>
+              <div class="flex flex-col gap-4" id="upload-queue"></div>
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-4" id="all-files">
+            <div class="flex items-center justify-between">
+              <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+                Alle Dateien
+              </h3>
+              <button
+                class="flex items-center gap-2 rounded-lg border border-gray-200/60 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                id="refresh-files"
+                type="button"
+              >
+                <span class="material-symbols-outlined text-base">refresh</span>
+                Aktualisieren
+              </button>
+            </div>
+            <div
+              class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+              id="file-grid"
+            >
+              <p
+                class="col-span-full rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500 dark:border-[#324867] dark:text-[#92a9c9]"
+                id="empty-state"
+              >
+                Noch keine Dateien vorhanden. Lade etwas hoch, um zu starten!
+              </p>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div class="fixed bottom-6 right-6 z-50 flex max-w-sm flex-col gap-3" id="toast-container"></div>
+    <script>
+      window.initialFileData = {
+        files: {{ files | tojson }},
+        totalSize: {{ total_size }},
+        capacity: {{ capacity }},
+      };
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
