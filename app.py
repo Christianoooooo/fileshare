@@ -40,11 +40,26 @@ class FileRecord:
 
     def to_dict(self) -> dict[str, t.Any]:
         download_url = url_for("download_file", file_id=self.id, _external=True)
+        view_url = (
+            url_for("view_file", file_id=self.id, _external=True)
+            if self.content_type.startswith("image/")
+            else None
+        )
         share_url = (
             url_for("serve_shared_file", token=self.share_token, _external=True)
             if self.share_token
             else None
         )
+        share_raw_url = None
+        if self.share_token:
+            if self.content_type.startswith("image/"):
+                share_raw_url = url_for(
+                    "serve_shared_file_raw", token=self.share_token, _external=True
+                )
+            else:
+                share_raw_url = url_for(
+                    "serve_shared_file", token=self.share_token, _external=True
+                )
         return {
             "id": self.id,
             "name": self.original_name,
@@ -52,7 +67,9 @@ class FileRecord:
             "uploaded_at": self.uploaded_at.isoformat(),
             "download_url": download_url,
             "share_url": share_url,
+            "share_raw_url": share_raw_url,
             "content_type": self.content_type,
+            "view_url": view_url,
         }
 
 
@@ -192,6 +209,13 @@ app = Flask(__name__)
 store = FileStore(METADATA_FILE)
 
 
+def _ensure_file_exists(record: FileRecord) -> Path:
+    file_path = UPLOAD_DIR / record.stored_name
+    if not file_path.exists():
+        abort(404)
+    return file_path
+
+
 @app.route("/")
 def index() -> str:
     files = [record.to_dict() for record in store.list_files()]
@@ -303,6 +327,11 @@ def create_share_link(file_id: str) -> Response:
         {
             "message": "Share link created.",
             "share_url": url_for("serve_shared_file", token=record.share_token, _external=True),
+            "share_raw_url": (
+                url_for("serve_shared_file_raw", token=record.share_token, _external=True)
+                if record.content_type.startswith("image/")
+                else url_for("serve_shared_file", token=record.share_token, _external=True)
+            ),
         }
     )
 
@@ -323,14 +352,58 @@ def download_file(file_id: str):
         record = store.get(file_id)
     except KeyError:
         abort(404)
-    file_path = UPLOAD_DIR / record.stored_name
-    if not file_path.exists():
-        abort(404)
+    _ensure_file_exists(record)
     return send_from_directory(
         UPLOAD_DIR,
         record.stored_name,
         as_attachment=True,
         download_name=record.original_name,
+    )
+
+
+@app.get("/files/<file_id>/raw")
+def serve_file_raw(file_id: str):
+    try:
+        record = store.get(file_id)
+    except KeyError:
+        abort(404)
+    _ensure_file_exists(record)
+    return send_from_directory(
+        UPLOAD_DIR,
+        record.stored_name,
+        as_attachment=False,
+    )
+
+
+@app.get("/files/<file_id>")
+def view_file(file_id: str):
+    try:
+        record = store.get(file_id)
+    except KeyError:
+        abort(404)
+
+    if not record.content_type.startswith("image/"):
+        abort(404)
+
+    _ensure_file_exists(record)
+
+    return render_template(
+        "view_image.html",
+        file_name=record.original_name,
+        raw_url=url_for("serve_file_raw", file_id=record.id),
+        download_url=url_for("download_file", file_id=record.id),
+        uploaded_at=record.uploaded_at.isoformat(),
+        share_url=(
+            url_for("serve_shared_file", token=record.share_token)
+            if record.share_token
+            else None
+        ),
+        share_raw_url=(
+            url_for("serve_shared_file_raw", token=record.share_token)
+            if record.share_token and record.content_type.startswith("image/")
+            else None
+        ),
+        is_shared=False,
     )
 
 
@@ -340,9 +413,48 @@ def serve_shared_file(token: str):
         record = store.find_by_token(token)
     except KeyError:
         abort(404)
-    file_path = UPLOAD_DIR / record.stored_name
-    if not file_path.exists():
+    _ensure_file_exists(record)
+
+    if record.content_type.startswith("image/"):
+        return render_template(
+            "view_image.html",
+            file_name=record.original_name,
+            raw_url=url_for("serve_shared_file_raw", token=token),
+            download_url=url_for("download_shared_file", token=token),
+            uploaded_at=record.uploaded_at.isoformat(),
+            share_url=url_for("serve_shared_file", token=token),
+            share_raw_url=url_for("serve_shared_file_raw", token=token),
+            is_shared=True,
+        )
+    return send_from_directory(
+        UPLOAD_DIR,
+        record.stored_name,
+        as_attachment=True,
+        download_name=record.original_name,
+    )
+
+
+@app.get("/s/<token>/raw")
+def serve_shared_file_raw(token: str):
+    try:
+        record = store.find_by_token(token)
+    except KeyError:
         abort(404)
+    _ensure_file_exists(record)
+    return send_from_directory(
+        UPLOAD_DIR,
+        record.stored_name,
+        as_attachment=False,
+    )
+
+
+@app.get("/s/<token>/download")
+def download_shared_file(token: str):
+    try:
+        record = store.find_by_token(token)
+    except KeyError:
+        abort(404)
+    _ensure_file_exists(record)
     return send_from_directory(
         UPLOAD_DIR,
         record.stored_name,
@@ -362,7 +474,7 @@ def sharex_config() -> Response:
         "RequestURL": upload_url,
         "Body": "MultipartFormData",
         "FileFormName": "files",
-        "URL": "$json:files[0].share_url$",
+        "URL": "$json:files[0].share_raw_url$",
         "DeletionURL": "$json:files[0].download_url$",
         "ErrorMessage": "$json:message$",
     }

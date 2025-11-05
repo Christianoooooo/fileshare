@@ -425,6 +425,21 @@ function createFileCard(file) {
   const card = document.createElement("div");
   card.className = "file-card flex flex-col gap-4 rounded-xl border border-gray-200/60 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-[#324867] dark:bg-[#1A1B26]/60";
 
+  const viewButton = file.view_url
+    ? `<a class="action-button" data-action="view" href="${file.view_url}" target="_blank" rel="noopener">
+        <span class="material-symbols-outlined text-base">visibility</span>
+        Ansehen
+      </a>`
+    : "";
+
+  const isImage = (file.content_type || "").toLowerCase().startsWith("image/");
+  const directShareButton = file.share_raw_url && isImage
+    ? `<button class="action-button" data-action="copy-direct" type="button">
+        <span class="material-symbols-outlined text-base">image</span>
+        Direktlink
+      </button>`
+    : "";
+
   card.innerHTML = `
     <div class="flex items-center gap-3">
       <span class="material-symbols-outlined text-4xl text-primary/80">${iconForFile(file)}</span>
@@ -434,6 +449,7 @@ function createFileCard(file) {
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
+      ${viewButton}
       <a class="action-button" data-action="download" href="${file.download_url}">
         <span class="material-symbols-outlined text-base">download</span>
         Download
@@ -457,6 +473,7 @@ function createFileCard(file) {
         <input class="flex-1 rounded-lg border border-gray-200/60 bg-white px-3 py-2 text-sm text-gray-700 dark:border-white/10 dark:bg-[#111822] dark:text-white" data-role="share-input" readonly value="${file.share_url || ""}" />
         <button class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary/90" data-action="copy">Kopieren</button>
         <button class="rounded-lg border border-gray-200/60 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10" data-action="revoke">Entziehen</button>
+        ${directShareButton}
       </div>
     </div>
   `;
@@ -486,14 +503,17 @@ function createFileCard(file) {
   const shareInput = card.querySelector('[data-role="share-input"]');
   const shareButton = card.querySelector('[data-action="share"]');
   const copyButton = card.querySelector('[data-action="copy"]');
+  const copyDirectButton = card.querySelector('[data-action="copy-direct"]');
   const revokeButton = card.querySelector('[data-action="revoke"]');
   const renameButton = card.querySelector('[data-action="rename"]');
   const deleteButton = card.querySelector('[data-action="delete"]');
   const downloadLink = card.querySelector('[data-action="download"]');
+  const viewLink = card.querySelector('[data-action="view"]');
 
   downloadLink?.setAttribute("download", file.name);
   downloadLink?.setAttribute("target", "_blank");
   downloadLink?.setAttribute("rel", "noopener");
+  viewLink?.setAttribute("rel", "noopener");
 
   shareButton?.addEventListener("click", async () => {
     await ensureShareLink(file, shareArea, shareInput);
@@ -505,6 +525,14 @@ function createFileCard(file) {
       return;
     }
     copyToClipboard(file.share_url);
+  });
+
+  copyDirectButton?.addEventListener("click", () => {
+    if (!file.share_raw_url) {
+      showToast("Es gibt noch keinen Direktlink.", "info");
+      return;
+    }
+    copyToClipboard(file.share_raw_url);
   });
 
   revokeButton?.addEventListener("click", async () => {
@@ -602,6 +630,7 @@ async function ensureShareLink(file, shareArea, shareInput) {
     }
     const data = await response.json();
     file.share_url = data.share_url;
+    file.share_raw_url = data.share_raw_url || null;
     insertOrUpdateFile(file);
     if (shareInput) {
       shareInput.value = file.share_url;
