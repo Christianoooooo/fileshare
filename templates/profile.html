@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Profil – FileShare{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+  <section class="rounded-2xl border border-gray-200/60 bg-white/80 p-8 shadow-sm dark:border-white/10 dark:bg-[#101822]/80">
+    <div class="flex flex-col gap-2">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Profilverwaltung</h1>
+      <p class="text-sm text-gray-600 dark:text-[#92a9c9]">
+        Aktualisiere deine Kontodaten, passe Standardverhalten an und verwalte deine API-Integration.
+      </p>
+      {% if success %}
+      <div class="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-500/40 dark:bg-green-500/20 dark:text-green-100">
+        {{ success }}
+      </div>
+      {% endif %}
+      {% if error %}
+      <div class="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/20 dark:text-red-100">
+        {{ error }}
+      </div>
+      {% endif %}
+    </div>
+    <form class="mt-6 space-y-6" method="post">
+      <input name="action" type="hidden" value="update" />
+      <div class="grid gap-6 md:grid-cols-2">
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-[#92a9c9]">
+          Benutzername
+          <input
+            class="rounded-xl border border-gray-200/60 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-primary focus:outline-none dark:border-white/10 dark:bg-[#1A1B26] dark:text-white"
+            name="username"
+            required
+            type="text"
+            value="{{ user.username }}"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-[#92a9c9]">
+          Neues Passwort
+          <input
+            class="rounded-xl border border-gray-200/60 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-primary focus:outline-none dark:border-white/10 dark:bg-[#1A1B26] dark:text-white"
+            name="password"
+            placeholder="Leer lassen, um das Passwort zu behalten"
+            type="password"
+          />
+        </label>
+      </div>
+      <div class="grid gap-6 md:grid-cols-2">
+        <label class="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-[#92a9c9]">
+          <input
+            {% if user.hide_media_default %}checked{% endif %}
+            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            name="hide_media_default"
+            type="checkbox"
+          />
+          Medien in der Übersicht standardmäßig ausblenden
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-[#92a9c9]">
+          Modus für kopierte Links
+          <select
+            class="rounded-xl border border-gray-200/60 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-primary focus:outline-none dark:border-white/10 dark:bg-[#1A1B26] dark:text-white"
+            name="copy_url_mode"
+          >
+            {% for value, label in copy_modes %}
+            <option value="{{ value }}" {% if user.copy_url_mode == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-[#92a9c9]">
+        Client-Konfiguration (z. B. JSON für automatisierte Tools)
+        <textarea
+          class="min-h-[120px] rounded-xl border border-gray-200/60 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm focus:border-primary focus:outline-none dark:border-white/10 dark:bg-[#1A1B26] dark:text-white"
+          name="client_config"
+          placeholder="Optional"
+        >{{ (user.client_config or '') | trim }}</textarea>
+      </label>
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          class="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90"
+          type="submit"
+        >
+          Änderungen speichern
+        </button>
+        <a
+          class="inline-flex items-center justify-center rounded-full border border-gray-200/60 px-5 py-2 text-sm font-semibold text-gray-700 transition hover:border-primary hover:text-primary dark:border-white/10 dark:text-white dark:hover:border-primary"
+          href="{{ url_for('export_profile') }}"
+        >
+          Daten exportieren
+        </a>
+      </div>
+    </form>
+  </section>
+
+  <section class="rounded-2xl border border-gray-200/60 bg-white/80 p-8 shadow-sm dark:border-white/10 dark:bg-[#101822]/80">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">ShareX &amp; API-Zugriff</h2>
+        <p class="text-sm text-gray-600 dark:text-[#92a9c9]">
+          Verwende den API-Schlüssel, um automatisierte Uploads zu authentifizieren.
+        </p>
+      </div>
+      <form method="post">
+        <input name="action" type="hidden" value="regenerate-token" />
+        <button
+          class="inline-flex items-center justify-center rounded-full border border-gray-200/60 px-5 py-2 text-sm font-semibold text-gray-700 transition hover:border-primary hover:text-primary dark:border-white/10 dark:text-white dark:hover:border-primary"
+          type="submit"
+        >
+          API-Schlüssel erneuern
+        </button>
+      </form>
+    </div>
+    <div class="mt-4 overflow-hidden rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm font-mono text-gray-700 dark:border-white/10 dark:bg-[#1A1B26] dark:text-white">
+      {{ user.api_token or 'Noch kein API-Schlüssel verfügbar' }}
+    </div>
+    <p class="mt-2 text-xs text-gray-500 dark:text-[#92a9c9]">
+      Hinterlegte ShareX-Konfigurationen enthalten diesen Schlüssel automatisch in den Anfragen.
+    </p>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}

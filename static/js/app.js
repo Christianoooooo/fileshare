@@ -3,6 +3,10 @@ const state = {
   capacity: 0,
   totalSize: 0,
   queue: [],
+  preferences: {
+    hideMediaDefault: false,
+    copyUrlMode: "view",
+  },
 };
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
@@ -24,6 +28,9 @@ function initialise() {
   state.files = initial.files || [];
   state.totalSize = initial.totalSize || 0;
   state.capacity = initial.capacity || 0;
+  const prefs = window.userPreferences || {};
+  state.preferences.hideMediaDefault = Boolean(prefs.hide_media_default);
+  state.preferences.copyUrlMode = prefs.copy_url_mode || "view";
   renderFiles();
   updateStats();
   setupEventListeners();
@@ -370,6 +377,21 @@ async function refreshFiles(showToastOnSuccess = false) {
     state.files = data.files || [];
     state.totalSize = data.total_size || 0;
     state.capacity = data.capacity || 0;
+    if (data.preferences) {
+      state.preferences.hideMediaDefault = Boolean(
+        data.preferences.hide_media_default,
+      );
+      if (data.preferences.copy_url_mode) {
+        state.preferences.copyUrlMode = data.preferences.copy_url_mode;
+      }
+      window.userPreferences = {
+        hide_media_default: state.preferences.hideMediaDefault,
+        copy_url_mode: state.preferences.copyUrlMode,
+      };
+      if (window.currentUser) {
+        window.currentUser.copy_url_mode = state.preferences.copyUrlMode;
+      }
+    }
     renderFiles();
     updateStats();
     if (showToastOnSuccess) {
@@ -414,14 +436,15 @@ function updateStats() {
   }
 }
 
+
 function renderFiles() {
-  const grid = document.getElementById("file-grid");
+  const tableBody = document.getElementById("file-table-body");
   const emptyState = document.getElementById("empty-state");
-  if (!grid) {
+  if (!tableBody) {
     return;
   }
 
-  grid.querySelectorAll(".file-card").forEach((element) => element.remove());
+  tableBody.innerHTML = "";
 
   if (!state.files.length) {
     if (emptyState) {
@@ -435,262 +458,360 @@ function renderFiles() {
   }
 
   state.files.forEach((file) => {
-    const card = createFileCard(file);
-    grid.appendChild(card);
+    const row = document.createElement("tr");
+    row.className = "file-row border-b border-gray-100 last:border-b-0 dark:border-white/5";
+    row.dataset.fileId = file.id;
+
+    const previewCell = document.createElement("td");
+    previewCell.className = "px-4 py-3 align-middle";
+    previewCell.appendChild(buildPreviewElement(file));
+    row.appendChild(previewCell);
+
+    const nameCell = document.createElement("td");
+    nameCell.className = "px-4 py-3 align-middle";
+    const nameWrapper = document.createElement("div");
+    nameWrapper.className = "flex flex-col gap-2";
+    const title = document.createElement("p");
+    title.className = "truncate text-sm font-semibold text-gray-900 dark:text-white";
+    title.textContent = file.name;
+    nameWrapper.appendChild(title);
+    const typeInfo = document.createElement("p");
+    typeInfo.className = "text-xs text-gray-500 dark:text-[#92a9c9]";
+    typeInfo.textContent = file.content_type || "Unbekannter Typ";
+    nameWrapper.appendChild(typeInfo);
+
+    const actions = document.createElement("div");
+    actions.className = "flex flex-wrap gap-2";
+    const canManage = file.can_manage !== false;
+    const actionDefinitions = [
+      { action: "open", label: "Open", icon: "open_in_new" },
+      { action: "download", label: "Download", icon: "download" },
+      { action: "copy", label: "Copy Link", icon: "link" },
+      { action: "hide", label: "Hide", icon: "visibility_off", requireManage: true },
+      { action: "custom", label: "Custom URL", icon: "edit_square", requireManage: true },
+      { action: "delete", label: "Delete", icon: "delete", requireManage: true, danger: true },
+    ];
+    actionDefinitions.forEach((definition) => {
+      const button = createActionButton(definition);
+      if (definition.requireManage && !canManage) {
+        button.disabled = true;
+        button.classList.add("opacity-50", "cursor-not-allowed");
+      }
+      if (definition.action === "hide" && (!file.is_public || !canManage)) {
+        button.disabled = true;
+        button.classList.add("opacity-50", "cursor-not-allowed");
+      }
+      actions.appendChild(button);
+    });
+    nameWrapper.appendChild(actions);
+    nameCell.appendChild(nameWrapper);
+    row.appendChild(nameCell);
+
+    const sizeCell = document.createElement("td");
+    sizeCell.className = "px-4 py-3 text-sm text-gray-500 dark:text-[#92a9c9]";
+    sizeCell.textContent = formatBytes(file.size);
+    row.appendChild(sizeCell);
+
+    const publicCell = document.createElement("td");
+    publicCell.className = "px-4 py-3";
+    publicCell.appendChild(createPublicBadge(Boolean(file.is_public)));
+    row.appendChild(publicCell);
+
+    const ownerCell = document.createElement("td");
+    ownerCell.className = "px-4 py-3 text-sm text-gray-500 dark:text-[#92a9c9]";
+    ownerCell.textContent = file.owner?.username || window.currentUser?.username || "";
+    row.appendChild(ownerCell);
+
+    const dateCell = document.createElement("td");
+    dateCell.className = "px-4 py-3 text-sm text-gray-500 dark:text-[#92a9c9]";
+    dateCell.textContent = formatDate(file.uploaded_at);
+    row.appendChild(dateCell);
+
+    tableBody.appendChild(row);
+
+    actions.querySelectorAll(".action-button").forEach((button) => {
+      const action = button.dataset.action;
+      button.addEventListener("click", () => {
+        if (button.disabled) {
+          return;
+        }
+        handleFileAction(file.id, action);
+      });
+    });
   });
 }
 
-function createFileCard(file) {
-  const card = document.createElement("div");
-  card.className = "file-card flex flex-col gap-4 rounded-xl border border-gray-200/60 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-[#324867] dark:bg-[#1A1B26]/60";
+function buildPreviewElement(file) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "flex h-14 w-20 items-center justify-center overflow-hidden rounded-lg border border-gray-200/60 bg-white/60 text-primary dark:border-white/10 dark:bg-[#1A1B26]/60";
 
-  const ownerBadge =
-    file.owner && window.currentUser?.is_admin
-      ? `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary/80">Eigentümer: ${file.owner.username}</span>`
-      : "";
+  const hideMedia = Boolean(state.preferences.hideMediaDefault);
+  if (!hideMedia && file.preview_type === "image") {
+    const image = document.createElement("img");
+    image.src = `/files/${file.id}/raw`;
+    image.alt = file.name;
+    image.className = "h-full w-full object-cover";
+    wrapper.appendChild(image);
+    return wrapper;
+  }
 
-  const viewButton = file.view_url
-    ? `<a class="action-button" data-action="view" href="${file.view_url}" target="_blank" rel="noopener">
-        <span class="material-symbols-outlined text-base">visibility</span>
-        Ansehen
-      </a>`
-    : "";
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-outlined text-2xl";
+  icon.textContent = iconForFile(file);
+  wrapper.appendChild(icon);
+  return wrapper;
+}
 
-  const directShareButton = file.share_raw_url
-    ? `<button class="action-button" data-action="copy-direct" type="button">
-        <span class="material-symbols-outlined text-base">open_in_new</span>
-        Direktlink
-      </button>`
-    : "";
-
-  card.innerHTML = `
-    <div class="flex items-center gap-3">
-      <span class="material-symbols-outlined text-4xl text-primary/80">${iconForFile(file)}</span>
-      <div class="min-w-0">
-        <p class="truncate text-lg font-semibold text-gray-900 dark:text-white" title="${file.name}">${file.name}</p>
-        <p class="text-sm text-gray-500 dark:text-[#92a9c9]">${formatBytes(file.size)} · ${formatDate(file.uploaded_at)}</p>
-        ${ownerBadge}
-      </div>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      ${viewButton}
-      <a class="action-button" data-action="download" href="${file.download_url}">
-        <span class="material-symbols-outlined text-base">download</span>
-        Download
-      </a>
-      <button class="action-button" data-action="share" type="button">
-        <span class="material-symbols-outlined text-base">link</span>
-        Link kopieren
-      </button>
-      <button class="action-button" data-action="rename" type="button">
-        <span class="material-symbols-outlined text-base">edit</span>
-        Umbenennen
-      </button>
-      <button class="action-button danger" data-action="delete" type="button">
-        <span class="material-symbols-outlined text-base">delete</span>
-        Löschen
-      </button>
-    </div>
-    <div class="share-area ${file.share_url ? "" : "hidden"}" data-role="share-area">
-      <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-[#92a9c9]">Freigabelink</label>
-      <div class="flex items-center gap-2">
-        <input class="flex-1 rounded-lg border border-gray-200/60 bg-white px-3 py-2 text-sm text-gray-700 dark:border-white/10 dark:bg-[#111822] dark:text-white" data-role="share-input" readonly value="${file.share_url || ""}" />
-        <button class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary/90" data-action="copy">Kopieren</button>
-        <button class="rounded-lg border border-gray-200/60 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10" data-action="revoke">Entziehen</button>
-        ${directShareButton}
-      </div>
-    </div>
-  `;
-
-  card.querySelectorAll(".action-button").forEach((button) => {
-    button.classList.add(
-      "inline-flex",
-      "items-center",
-      "gap-2",
-      "rounded-lg",
-      "border",
+function createActionButton({ action, label, icon, danger = false }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.action = action;
+  const baseClasses = [
+    "action-button",
+    "inline-flex",
+    "items-center",
+    "gap-2",
+    "rounded-lg",
+    "border",
+    "px-3",
+    "py-1.5",
+    "text-sm",
+    "font-semibold",
+    "transition",
+  ];
+  if (danger) {
+    baseClasses.push(
+      "border-red-200/60",
+      "text-red-600",
+      "hover:bg-red-50",
+      "dark:border-red-400/40",
+      "dark:text-red-300",
+      "dark:hover:bg-red-500/20",
+    );
+  } else {
+    baseClasses.push(
       "border-gray-200/60",
-      "px-3",
-      "py-2",
-      "text-sm",
-      "font-semibold",
       "text-gray-700",
-      "transition",
       "hover:bg-gray-100",
       "dark:border-white/10",
       "dark:text-white",
-      "dark:hover:bg-white/10"
+      "dark:hover:bg-white/10",
     );
-  });
-
-  const shareArea = card.querySelector('[data-role="share-area"]');
-  const shareInput = card.querySelector('[data-role="share-input"]');
-  const shareButton = card.querySelector('[data-action="share"]');
-  const copyButton = card.querySelector('[data-action="copy"]');
-  const copyDirectButton = card.querySelector('[data-action="copy-direct"]');
-  const revokeButton = card.querySelector('[data-action="revoke"]');
-  const renameButton = card.querySelector('[data-action="rename"]');
-  const deleteButton = card.querySelector('[data-action="delete"]');
-  const downloadLink = card.querySelector('[data-action="download"]');
-  const viewLink = card.querySelector('[data-action="view"]');
-
-  downloadLink?.setAttribute("download", file.name);
-  downloadLink?.setAttribute("target", "_blank");
-  downloadLink?.setAttribute("rel", "noopener");
-  viewLink?.setAttribute("rel", "noopener");
-
-  const canManage = file.can_manage !== false;
-  if (!canManage) {
-    shareButton?.classList.add("hidden");
-    copyButton?.classList.add("hidden");
-    copyDirectButton?.classList.add("hidden");
-    revokeButton?.classList.add("hidden");
-    renameButton?.classList.add("hidden");
-    deleteButton?.classList.add("hidden");
-    shareArea?.classList.add("hidden");
   }
+  button.className = baseClasses.join(" ");
 
-  shareButton?.addEventListener("click", async () => {
-    await ensureShareLink(file, shareArea, shareInput);
-  });
+  button.innerHTML = `
+    <span class="material-symbols-outlined text-base">${icon}</span>
+    <span>${label}</span>
+  `;
 
-  copyButton?.addEventListener("click", () => {
-    if (!file.share_url) {
-      showToast("Es gibt noch keinen Freigabelink.", "info");
-      return;
-    }
-    copyToClipboard(file.share_url);
-  });
-
-  copyDirectButton?.addEventListener("click", () => {
-    if (!file.share_raw_url) {
-      showToast("Es gibt noch keinen Direktlink.", "info");
-      return;
-    }
-    copyToClipboard(file.share_raw_url);
-  });
-
-  revokeButton?.addEventListener("click", async () => {
-    if (!file.share_url) {
-      showToast("Es gibt keinen aktiven Link zu entfernen.", "info");
-      return;
-    }
-    const confirmed = confirm("Möchtest du den Freigabelink wirklich entziehen?");
-    if (!confirmed) {
-      return;
-    }
-    try {
-      const response = await fetch(`/api/files/${file.id}/share`, {
-        method: "DELETE",
-      });
-      if (handleUnauthorizedResponse(response)) {
-        return;
-      }
-      if (!response.ok) {
-        throw new Error("Der Freigabelink konnte nicht entfernt werden.");
-      }
-      file.share_url = null;
-      shareInput.value = "";
-      shareArea?.classList.add("hidden");
-      insertOrUpdateFile(file);
-      updateStats();
-      renderFiles();
-      showToast("Freigabelink entfernt.", "success");
-    } catch (error) {
-      showToast(error.message || "Der Freigabelink konnte nicht entfernt werden.", "error");
-    }
-  });
-
-  renameButton?.addEventListener("click", async () => {
-    const newName = prompt("Neuen Dateinamen eingeben", file.name);
-    if (!newName || newName === file.name) {
-      return;
-    }
-    try {
-      const response = await fetch(`/api/files/${file.id}/rename`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName }),
-      });
-      if (handleUnauthorizedResponse(response)) {
-        return;
-      }
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Der Dateiname konnte nicht geändert werden.");
-      }
-      const data = await response.json();
-      const updatedFile = data.file;
-      insertOrUpdateFile(updatedFile);
-      updateStats();
-      renderFiles();
-      showToast("Datei wurde umbenannt.", "success");
-    } catch (error) {
-      showToast(error.message || "Der Dateiname konnte nicht geändert werden.", "error");
-    }
-  });
-
-  deleteButton?.addEventListener("click", async () => {
-    const confirmed = confirm(`Möchtest du "${file.name}" endgültig löschen?`);
-    if (!confirmed) {
-      return;
-    }
-    try {
-      const response = await fetch(`/api/files/${file.id}`, {
-        method: "DELETE",
-      });
-      if (handleUnauthorizedResponse(response)) {
-        return;
-      }
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Die Datei konnte nicht gelöscht werden.");
-      }
-      state.files = state.files.filter((entry) => entry.id !== file.id);
-      showToast("Datei wurde gelöscht.", "success");
-      await refreshFiles();
-    } catch (error) {
-      showToast(error.message || "Die Datei konnte nicht gelöscht werden.", "error");
-    }
-  });
-
-  return card;
+  return button;
 }
 
-async function ensureShareLink(file, shareArea, shareInput) {
-  if (file.share_url) {
-    copyToClipboard(file.share_url, {
-      successMessage: "Freigabelink wurde in die Zwischenablage kopiert.",
-    });
+function createPublicBadge(isPublic) {
+  const badge = document.createElement("span");
+  badge.className = "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold";
+  if (isPublic) {
+    badge.classList.add("bg-green-100", "text-green-700", "dark:bg-green-500/20", "dark:text-green-200");
+    badge.textContent = "Ja";
+  } else {
+    badge.classList.add("bg-gray-100", "text-gray-600", "dark:bg-white/10", "dark:text-[#92a9c9]");
+    badge.textContent = "Nein";
+  }
+  return badge;
+}
+
+async function handleFileAction(fileId, action) {
+  const file = state.files.find((entry) => entry.id === fileId);
+  if (!file) {
+    showToast("Datei wurde nicht gefunden.", "error");
+    return;
+  }
+
+  switch (action) {
+    case "open":
+      if (file.view_url) {
+        window.open(file.view_url, "_blank", "noopener");
+      } else {
+        showToast("Kein Vorschaulink verfügbar.", "error");
+      }
+      break;
+    case "download":
+      if (file.download_url) {
+        window.open(file.download_url, "_blank", "noopener");
+      } else {
+        showToast("Kein Downloadlink verfügbar.", "error");
+      }
+      break;
+    case "copy":
+      await copyLinkForFile(fileId);
+      break;
+    case "hide":
+      await hideFileFromPublic(fileId);
+      break;
+    case "custom":
+      await promptCustomUrl(fileId);
+      break;
+    case "delete":
+      await deleteFile(fileId);
+      break;
+    default:
+      break;
+  }
+}
+
+async function copyLinkForFile(fileId) {
+  const file = state.files.find((entry) => entry.id === fileId);
+  if (!file) {
+    showToast("Datei wurde nicht gefunden.", "error");
+    return;
+  }
+  const mode = state.preferences.copyUrlMode || "view";
+  try {
+    if (mode === "download") {
+      if (!file.download_url) {
+        throw new Error("Kein Downloadlink verfügbar.");
+      }
+      copyToClipboard(file.download_url, { successMessage: "Downloadlink kopiert." });
+      return;
+    }
+
+    if (mode === "view") {
+      if (!file.view_url) {
+        throw new Error("Kein Vorschaulink verfügbar.");
+      }
+      copyToClipboard(file.view_url, { successMessage: "Link kopiert." });
+      return;
+    }
+
+    const updatedFile = await ensureShareLink(fileId, mode === "raw");
+    const shareLink = mode === "raw" ? updatedFile.share_raw_url || updatedFile.share_url : updatedFile.share_url;
+    if (!shareLink) {
+      throw new Error("Es konnte kein Freigabelink erzeugt werden.");
+    }
+    copyToClipboard(shareLink, { successMessage: "Freigabelink kopiert." });
+  } catch (error) {
+    showToast(error.message || "Link konnte nicht kopiert werden.", "error");
+  }
+}
+
+async function hideFileFromPublic(fileId) {
+  const file = state.files.find((entry) => entry.id === fileId);
+  if (!file) {
+    showToast("Datei wurde nicht gefunden.", "error");
     return;
   }
   try {
-    const response = await fetch(`/api/files/${file.id}/share`, {
-      method: "POST",
-    });
+    const response = await fetch(`/api/files/${fileId}/share`, { method: "DELETE" });
     if (handleUnauthorizedResponse(response)) {
       return;
     }
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      throw new Error(data.message || "Der Freigabelink konnte nicht erstellt werden.");
+      throw new Error(data.message || "Der Link konnte nicht versteckt werden.");
     }
-    const data = await response.json();
-    file.share_url = data.share_url;
-    file.share_raw_url = data.share_raw_url || null;
+    file.share_url = null;
+    file.share_raw_url = null;
+    file.share_token = null;
+    file.is_public = false;
     insertOrUpdateFile(file);
-    if (shareInput) {
-      shareInput.value = file.share_url;
-    }
-    shareArea?.classList.remove("hidden");
-    updateStats();
     renderFiles();
-    copyToClipboard(file.share_url, {
-      successMessage: "Freigabelink erstellt und kopiert.",
-    });
+    updateStats();
+    showToast("Datei ist nun privat.", "success");
   } catch (error) {
-    showToast(error.message || "Der Freigabelink konnte nicht erstellt werden.", "error");
+    showToast(error.message || "Der Link konnte nicht versteckt werden.", "error");
   }
+}
+
+async function promptCustomUrl(fileId) {
+  const file = state.files.find((entry) => entry.id === fileId);
+  if (!file) {
+    showToast("Datei wurde nicht gefunden.", "error");
+    return;
+  }
+  const currentSlug = file.share_token || "";
+  const slug = prompt("Benutzerdefinierte URL festlegen", currentSlug);
+  if (!slug) {
+    return;
+  }
+  try {
+    const response = await fetch(`/api/files/${fileId}/custom-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug }),
+    });
+    if (handleUnauthorizedResponse(response)) {
+      return;
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || "Die benutzerdefinierte URL konnte nicht gespeichert werden.");
+    }
+    const updatedFile = data.file;
+    insertOrUpdateFile(updatedFile);
+    renderFiles();
+    updateStats();
+    showToast(data.message || "Benutzerdefinierte URL gespeichert.", "success");
+  } catch (error) {
+    showToast(error.message || "Die benutzerdefinierte URL konnte nicht gespeichert werden.", "error");
+  }
+}
+
+async function deleteFile(fileId) {
+  const file = state.files.find((entry) => entry.id === fileId);
+  if (!file) {
+    showToast("Datei wurde nicht gefunden.", "error");
+    return;
+  }
+  const confirmed = confirm(`Möchtest du "${file.name}" endgültig löschen?`);
+  if (!confirmed) {
+    return;
+  }
+  try {
+    const response = await fetch(`/api/files/${fileId}`, { method: "DELETE" });
+    if (handleUnauthorizedResponse(response)) {
+      return;
+    }
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || "Die Datei konnte nicht gelöscht werden.");
+    }
+    state.files = state.files.filter((entry) => entry.id !== fileId);
+    renderFiles();
+    updateStats();
+    showToast("Datei wurde gelöscht.", "success");
+  } catch (error) {
+    showToast(error.message || "Die Datei konnte nicht gelöscht werden.", "error");
+  }
+}
+
+async function ensureShareLink(fileId, needsRawLink = false) {
+  let file = state.files.find((entry) => entry.id === fileId);
+  if (!file) {
+    throw new Error("Datei wurde nicht gefunden.");
+  }
+  if (file.share_url && (!needsRawLink || file.share_raw_url)) {
+    return file;
+  }
+  const response = await fetch(`/api/files/${fileId}/share`, {
+    method: "POST",
+  });
+  if (handleUnauthorizedResponse(response)) {
+    throw new Error("Authentifizierung erforderlich.");
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Der Freigabelink konnte nicht erstellt werden.");
+  }
+  const data = await response.json();
+  file.share_url = data.share_url;
+  file.share_raw_url = data.share_raw_url || data.share_url;
+  file.share_token = data.share_token || file.share_token;
+  file.is_public = true;
+  insertOrUpdateFile(file);
+  renderFiles();
+  updateStats();
+  return state.files.find((entry) => entry.id === fileId) || file;
 }
 
 function insertOrUpdateFile(file) {

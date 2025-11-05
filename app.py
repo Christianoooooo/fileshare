@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 import secrets
 import sqlite3
 import typing as t
@@ -31,6 +33,7 @@ from werkzeug.utils import secure_filename
 
 UPLOAD_DIR = Path("uploads")
 DEFAULT_CAPACITY = 50 * 1024 * 1024 * 1024  # 50 GB
+CUSTOM_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{4,64}$")
 
 
 @dataclass
@@ -40,6 +43,10 @@ class User:
     password_hash: str
     is_admin: bool
     created_at: datetime
+    hide_media_default: bool
+    copy_url_mode: str
+    client_config: str | None
+    api_token: str | None
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
@@ -124,6 +131,8 @@ class FileRecord:
             "view_url": view_url,
             "preview_type": self.preview_category(),
             "can_manage": can_manage,
+            "is_public": bool(self.share_token),
+            "share_token": self.share_token,
         }
         if include_owner:
             payload["owner"] = {
@@ -276,6 +285,26 @@ class FileStore:
                 raise KeyError(file_id)
         return self.get(file_id)
 
+    def set_share_token(self, file_id: str, token: str) -> FileRecord:
+        try:
+            with self._lock, self.conn:
+                cursor = self.conn.execute(
+                    "UPDATE files SET share_token = ? WHERE _id = ?",
+                    (token, file_id),
+                )
+                if cursor.rowcount == 0:
+                    raise KeyError(file_id)
+        except sqlite3.IntegrityError as exc:
+            raise ValueError("Der gewünschte Link ist bereits vergeben.") from exc
+        return self.get(file_id)
+
+    def update_owner_username(self, owner_id: str, new_username: str) -> None:
+        with self._lock, self.conn:
+            self.conn.execute(
+                "UPDATE files SET owner_username = ? WHERE owner_id = ?",
+                (new_username, owner_id),
+            )
+
     def find_by_token(self, token: str) -> FileRecord:
         cursor = self.conn.execute(
             "SELECT * FROM files WHERE share_token = ?",
@@ -304,6 +333,10 @@ class UserStore:
             password_hash=document["password_hash"],
             is_admin=bool(document.get("is_admin", False)),
             created_at=created_at or datetime.now(timezone.utc),
+            hide_media_default=bool(document.get("hide_media_default", 0)),
+            copy_url_mode=(document.get("copy_url_mode") or "view"),
+            client_config=document.get("client_config"),
+            api_token=document.get("api_token"),
         )
 
     def has_users(self) -> bool:
@@ -328,6 +361,7 @@ class UserStore:
         created_at = datetime.now(timezone.utc).isoformat()
         password_hash = generate_password_hash(password)
         is_admin = not self.has_users()
+        api_token = secrets.token_hex(24)
         document = {
             "_id": user_id,
             "username": username,
@@ -335,6 +369,10 @@ class UserStore:
             "password_hash": password_hash,
             "is_admin": int(is_admin),
             "created_at": created_at,
+            "hide_media_default": 0,
+            "copy_url_mode": "view",
+            "client_config": None,
+            "api_token": api_token,
         }
         try:
             with self._lock, self.conn:
@@ -346,9 +384,13 @@ class UserStore:
                         username_lower,
                         password_hash,
                         is_admin,
-                        created_at
+                        created_at,
+                        hide_media_default,
+                        copy_url_mode,
+                        client_config,
+                        api_token
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         document["_id"],
@@ -357,6 +399,10 @@ class UserStore:
                         document["password_hash"],
                         document["is_admin"],
                         document["created_at"],
+                        document["hide_media_default"],
+                        document["copy_url_mode"],
+                        document["client_config"],
+                        document["api_token"],
                     ),
                 )
         except sqlite3.IntegrityError as exc:
@@ -386,6 +432,18 @@ class UserStore:
             return None
         return self._from_document(dict(row))
 
+    def get_by_token(self, token: str) -> User | None:
+        if not token:
+            return None
+        cursor = self.conn.execute(
+            "SELECT * FROM users WHERE api_token = ?",
+            (token,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._from_document(dict(row))
+
     def authenticate(self, username: str, password: str) -> User | None:
         user = self.find_by_username(username)
         if not user:
@@ -393,6 +451,71 @@ class UserStore:
         if not user.check_password(password):
             return None
         return user
+
+    def update_user(
+        self,
+        user: User,
+        *,
+        username: str | None = None,
+        password: str | None = None,
+        hide_media_default: bool | None = None,
+        copy_url_mode: str | None = None,
+        client_config: str | None = None,
+    ) -> User:
+        updates: dict[str, t.Any] = {}
+        if username is not None:
+            username = username.strip()
+            if not username:
+                raise ValueError("Ein Benutzername ist erforderlich.")
+            username_lower = username.lower()
+            if username_lower != user.username.lower():
+                existing = self.conn.execute(
+                    "SELECT 1 FROM users WHERE username_lower = ? AND _id != ?",
+                    (username_lower, user.id),
+                ).fetchone()
+                if existing:
+                    raise ValueError("Der Benutzername ist bereits vergeben.")
+                updates["username"] = username
+                updates["username_lower"] = username_lower
+
+        if password:
+            if len(password) < 8:
+                raise ValueError("Das Passwort muss mindestens 8 Zeichen enthalten.")
+            updates["password_hash"] = generate_password_hash(password)
+
+        if hide_media_default is not None:
+            updates["hide_media_default"] = 1 if hide_media_default else 0
+
+        if copy_url_mode is not None:
+            allowed_modes = {"view", "download", "share", "raw"}
+            if copy_url_mode not in allowed_modes:
+                raise ValueError("Ungültiger Modus für die Link-Kopie.")
+            updates["copy_url_mode"] = copy_url_mode
+
+        if client_config is not None:
+            updates["client_config"] = client_config or None
+
+        if not updates:
+            return user
+
+        set_clause = ", ".join(f"{field} = ?" for field in updates)
+        params = list(updates.values()) + [user.id]
+        with self._lock, self.conn:
+            self.conn.execute(
+                f"UPDATE users SET {set_clause} WHERE _id = ?",
+                params,
+            )
+        updated = self.get(user.id)
+        return updated or user
+
+    def regenerate_api_token(self, user_id: str) -> str:
+        token = secrets.token_hex(24)
+        with self._lock, self.conn:
+            self.conn.execute(
+                "UPDATE users SET api_token = ? WHERE _id = ?",
+                (token, user_id),
+            )
+        return token
 
 
 app = Flask(__name__)
@@ -431,9 +554,13 @@ def _initialize_schema(connection: sqlite3.Connection) -> None:
                 username_lower TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 is_admin INTEGER NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                hide_media_default INTEGER NOT NULL DEFAULT 0,
+                copy_url_mode TEXT NOT NULL DEFAULT 'view',
+                client_config TEXT,
+                api_token TEXT UNIQUE
             )
-            """
+        """
         )
         connection.execute(
             """
@@ -455,6 +582,29 @@ def _initialize_schema(connection: sqlite3.Connection) -> None:
         )
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_files_uploaded_at ON files(uploaded_at)"
+        )
+
+        # Migrations for legacy databases
+        def _ensure_column(table: str, column: str, ddl: str) -> None:
+            try:
+                connection.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+            except sqlite3.OperationalError:
+                pass
+
+        _ensure_column(
+            "users",
+            "hide_media_default",
+            "hide_media_default INTEGER NOT NULL DEFAULT 0",
+        )
+        _ensure_column(
+            "users",
+            "copy_url_mode",
+            "copy_url_mode TEXT NOT NULL DEFAULT 'view'",
+        )
+        _ensure_column("users", "client_config", "client_config TEXT")
+        _ensure_column("users", "api_token", "api_token TEXT")
+        connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_api_token ON users(api_token) WHERE api_token IS NOT NULL"
         )
 
 
@@ -502,17 +652,31 @@ def user_can_manage(record: FileRecord, user: User | None) -> bool:
     return user.is_admin or record.owner_id == user.id
 
 
+def _extract_api_token() -> str | None:
+    authorization = request.headers.get("Authorization", "")
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    token = request.headers.get("X-API-Token")
+    if token:
+        return token.strip()
+    return None
+
+
 @app.before_request
 def load_current_user() -> None:
-    user_id = session.get("user_id")
     g.user = None
-    if not user_id:
-        return
-    user = user_store.get(user_id)
+    user_id = session.get("user_id")
+    user = None
+    if user_id:
+        user = user_store.get(user_id)
+        if user is None:
+            session.pop("user_id", None)
+    if user is None:
+        token = _extract_api_token()
+        if token:
+            user = user_store.get_by_token(token)
     if user:
         g.user = user
-    else:
-        session.pop("user_id", None)
 
 
 @app.context_processor
@@ -607,7 +771,7 @@ def index() -> str:
     else:
         records = file_store.list_files(owner_id=user.id)
         total_size = file_store.total_size(owner_id=user.id)
-    include_owner = user.is_admin
+    include_owner = True
     files = [
         record.to_dict(current_user=user, include_owner=include_owner)
         for record in records
@@ -617,7 +781,90 @@ def index() -> str:
         files=files,
         total_size=total_size,
         capacity=file_store.capacity,
+        preferences={
+            "hide_media_default": user.hide_media_default,
+            "copy_url_mode": user.copy_url_mode,
+        },
     )
+
+
+@app.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile() -> str:
+    user = t.cast(User, g.user)
+    success: str | None = None
+    error: str | None = None
+    if request.method == "POST":
+        action = request.form.get("action") or "update"
+        if action == "regenerate-token":
+            token = user_store.regenerate_api_token(user.id)
+            user.api_token = token
+            g.user = user
+            success = "API-Schlüssel wurde erneuert."
+        else:
+            username = request.form.get("username", user.username)
+            password = request.form.get("password") or None
+            hide_media_default = request.form.get("hide_media_default") == "on"
+            copy_url_mode = request.form.get("copy_url_mode", user.copy_url_mode)
+            client_config_raw = request.form.get("client_config", "")
+            client_config = client_config_raw.strip() or None
+            try:
+                updated = user_store.update_user(
+                    user,
+                    username=username,
+                    password=password,
+                    hide_media_default=hide_media_default,
+                    copy_url_mode=copy_url_mode,
+                    client_config=client_config,
+                )
+            except ValueError as exc:
+                error = str(exc)
+            else:
+                if updated.username != user.username:
+                    file_store.update_owner_username(updated.id, updated.username)
+                user = updated
+                g.user = updated
+                success = "Profil wurde aktualisiert."
+    return render_template(
+        "profile.html",
+        user=user,
+        success=success,
+        error=error,
+        copy_modes=[
+            ("view", "Ansicht (interne Seite)"),
+            ("download", "Download-Link"),
+            ("share", "Öffentlicher Freigabelink"),
+            ("raw", "Direkter Medienlink"),
+        ],
+    )
+
+
+@app.get("/profile/export")
+@login_required
+def export_profile() -> Response:
+    user = t.cast(User, g.user)
+    files = file_store.list_files(owner_id=user.id)
+    payload = {
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "created_at": user.created_at.isoformat(),
+            "hide_media_default": user.hide_media_default,
+            "copy_url_mode": user.copy_url_mode,
+            "client_config": user.client_config,
+        },
+        "files": [
+            file.to_dict(current_user=user, include_owner=True)
+            for file in files
+        ],
+    }
+    response = Response(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        mimetype="application/json",
+    )
+    filename = f"fileshare-export-{user.username}.json"
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
 
 
 @app.post("/api/upload")
@@ -662,9 +909,7 @@ def upload_files() -> Response:
         file_storage.save(destination)
 
         record = file_store.ensure_share_token(record.id)
-        saved_files.append(
-            record.to_dict(current_user=user, include_owner=user.is_admin)
-        )
+        saved_files.append(record.to_dict(current_user=user, include_owner=True))
 
     status_code = 200 if saved_files else 400
     message = "Upload abgeschlossen." if saved_files else "Keine Dateien wurden hochgeladen."
@@ -681,9 +926,9 @@ def list_files() -> Response:
     else:
         records = file_store.list_files(owner_id=user.id)
         total_size = file_store.total_size(owner_id=user.id)
-    include_owner = user.is_admin
+    include_owner = True
     files = [
-        record.to_dict(current_user=user, include_owner=include_owner)
+            record.to_dict(current_user=user, include_owner=include_owner)
         for record in records
     ]
     return jsonify(
@@ -691,6 +936,10 @@ def list_files() -> Response:
             "files": files,
             "total_size": total_size,
             "capacity": file_store.capacity,
+            "preferences": {
+                "hide_media_default": user.hide_media_default,
+                "copy_url_mode": user.copy_url_mode,
+            },
         }
     )
 
@@ -763,6 +1012,46 @@ def create_share_link(file_id: str) -> Response:
             "message": "Freigabelink wurde erstellt.",
             "share_url": url_for("serve_shared_file", token=record.share_token, _external=True),
             "share_raw_url": share_raw,
+            "share_token": record.share_token,
+        }
+    )
+
+
+@app.post("/api/files/<file_id>/custom-url")
+@api_login_required
+def set_custom_share_url(file_id: str) -> Response:
+    payload = request.get_json(silent=True) or {}
+    slug = (payload.get("slug") or "").strip()
+    if not slug:
+        return jsonify({"message": "Eine benutzerdefinierte URL ist erforderlich."}), 400
+    if not CUSTOM_TOKEN_PATTERN.match(slug):
+        return (
+            jsonify(
+                {
+                    "message": "Die URL darf nur Buchstaben, Zahlen, '-' und '_' enthalten und muss zwischen 4 und 64 Zeichen lang sein.",
+                }
+            ),
+            400,
+        )
+    user = t.cast(User, g.user)
+    try:
+        record = file_store.get(file_id)
+    except KeyError:
+        return jsonify({"message": "Datei wurde nicht gefunden."}), 404
+
+    if not user_can_manage(record, user):
+        return jsonify({"message": "Keine Berechtigung."}), 403
+
+    try:
+        record = file_store.set_share_token(file_id, slug)
+    except ValueError as exc:
+        return jsonify({"message": str(exc)}), 400
+
+    record_dict = record.to_dict(current_user=user, include_owner=True)
+    return jsonify(
+        {
+            "message": "Benutzerdefinierte URL gespeichert.",
+            "file": record_dict,
         }
     )
 
@@ -918,6 +1207,18 @@ def download_shared_file(token: str):
 @app.get("/sharex-config")
 @login_required
 def sharex_config() -> Response:
+    user = t.cast(User, g.user)
+    if not user.api_token:
+        token = user_store.regenerate_api_token(user.id)
+        user.api_token = token
+    url_mode = user.copy_url_mode or "view"
+    url_template = "$json:files[0].view_url$"
+    if url_mode == "download":
+        url_template = "$json:files[0].download_url$"
+    elif url_mode == "share":
+        url_template = "$json:files[0].share_url$"
+    elif url_mode == "raw":
+        url_template = "$json:files[0].share_raw_url$"
     upload_url = url_for("upload_files", _external=True)
     config = {
         "Version": "14.1.0",
@@ -927,9 +1228,12 @@ def sharex_config() -> Response:
         "RequestURL": upload_url,
         "Body": "MultipartFormData",
         "FileFormName": "files",
-        "URL": "$json:files[0].view_url$",
+        "URL": url_template,
         "DeletionURL": "$json:files[0].download_url$",
         "ErrorMessage": "$json:message$",
+        "Headers": {
+            "Authorization": f"Bearer {user.api_token}",
+        },
     }
     response = jsonify(config)
     response.headers["Content-Disposition"] = "attachment; filename=fileshare.sxcu"
